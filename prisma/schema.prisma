@@ -3,7 +3,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -18,9 +17,11 @@ model User {
   id            String    @id @default(cuid())
   email         String    @unique
   name          String?
+  phone         String?   // Phone number (required for all users)
   emailVerified DateTime?
   image         String?
   password      String?   // For email/password auth
+  onboardingCompleted Boolean @default(false) // Track if user completed onboarding
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

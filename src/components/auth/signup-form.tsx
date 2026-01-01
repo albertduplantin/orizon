@@ -1,16 +1,42 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { EmailSignUpForm } from "./email-signup-form";
 
 export function SignUpForm() {
+  const [showEmailForm, setShowEmailForm] = useState(false);
+
   const handleGoogleSignIn = async () => {
-    await signIn("google", { callbackUrl: "/onboarding" });
+    window.location.href = "/api/auth/signin?provider=google";
   };
 
   const handleAppleSignIn = async () => {
-    await signIn("apple", { callbackUrl: "/onboarding" });
+    window.location.href = "/api/auth/signin?provider=apple";
   };
+
+  if (showEmailForm) {
+    return (
+      <div className="space-y-4">
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl font-semibold">Créer un compte</h2>
+          <p className="text-sm text-muted-foreground">
+            Remplissez vos informations
+          </p>
+        </div>
+
+        <EmailSignUpForm />
+
+        <Button
+          variant="ghost"
+          className="w-full"
+          onClick={() => setShowEmailForm(false)}
+        >
+          ← Retour aux options d&apos;inscription
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -73,10 +99,33 @@ export function SignUpForm() {
         </div>
         <div className="relative flex justify-center text-xs uppercase">
           <span className="bg-background px-2 text-muted-foreground">
-            Inscription gratuite
+            Ou
           </span>
         </div>
       </div>
+
+      {/* Email Signup Button */}
+      <Button
+        onClick={() => setShowEmailForm(true)}
+        variant="outline"
+        className="w-full h-11 text-base font-medium"
+        type="button"
+      >
+        <svg
+          className="w-5 h-5 mr-2"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+          />
+        </svg>
+        S&apos;inscrire avec un email
+      </Button>
 
       {/* Benefits */}
       <div className="space-y-2 pt-2">
