@@ -1,0 +1,284 @@
+// ORIZON - Prisma Schema
+// Multitenant SaaS Platform for Event Management
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// CORE MODELS - Authentication & Users
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  emailVerified DateTime?
+  image         String?
+  password      String?   // For email/password auth
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  tenantMembers TenantMember[]
+  volunteers    Volunteer[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ============================================
+// MULTITENANT MODELS
+// ============================================
+
+model Tenant {
+  id                    String   @id @default(cuid())
+  name                  String
+  slug                  String   @unique
+  description           String?  @db.Text
+  logo                  String?
+  website               String?
+  eventStartDate        DateTime?
+  eventEndDate          DateTime?
+
+  // Billing
+  stripeCustomerId      String?  @unique
+  stripeSubscriptionId  String?  @unique
+  subscriptionStatus    String?  @default("free") // free, trialing, active, canceled, expired
+  plan                  String?  @default("free") // free, starter, pro, enterprise
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  members               TenantMember[]
+  modules               TenantModule[]
+  inviteCodes           InviteCode[]
+  roles                 Role[]
+  volunteers            Volunteer[]
+  volunteerMissions     VolunteerMission[]
+
+  @@index([slug])
+  @@map("tenants")
+}
+
+model TenantMember {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  role      String   @default("member") // tenant_admin, module_manager, member
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  joinedAt  DateTime @default(now())
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+  @@index([userId])
+  @@map("tenant_members")
+}
+
+model TenantModule {
+  id             String    @id @default(cuid())
+  tenantId       String
+  moduleId       String    // 'volunteers', 'ticketing', etc.
+  enabled        Boolean   @default(true)
+  activatedAt    DateTime  @default(now())
+  expiresAt      DateTime? // null = permanent
+  billingStatus  String    @default("granted") // granted, trial, active, expired
+
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, moduleId])
+  @@index([tenantId])
+  @@map("tenant_modules")
+}
+
+// ============================================
+// RBAC - Roles & Permissions
+// ============================================
+
+model Role {
+  id          String   @id @default(cuid())
+  tenantId    String
+  moduleId    String?  // null = global role
+  name        String
+  description String?  @db.Text
+  permissions String[] // array of permission strings
+  isSystem    Boolean  @default(false)
+  createdBy   String?
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assignments UserRole[]
+
+  @@unique([tenantId, moduleId, name])
+  @@index([tenantId])
+  @@map("roles")
+}
+
+model UserRole {
+  id       String @id @default(cuid())
+  userId   String
+  roleId   String
+  tenantId String
+  scope    String? // 'module:volunteers'
+
+  role     Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  assignedAt DateTime @default(now())
+
+  @@unique([userId, roleId, tenantId])
+  @@index([userId])
+  @@index([tenantId])
+  @@map("user_roles")
+}
+
+// ============================================
+// INVITATION SYSTEM
+// ============================================
+
+model InviteCode {
+  id        String   @id @default(cuid())
+  tenantId  String
+  code      String   @unique // 6-letter code (e.g., ABC3X7)
+  moduleId  String?  // null = general invite, or specific module
+  role      String   // role to assign on signup
+  maxUses   Int      @default(1)
+  uses      Int      @default(0)
+  expiresAt DateTime?
+  createdBy String
+  createdAt DateTime @default(now())
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([code])
+  @@index([tenantId])
+  @@map("invite_codes")
+}
+
+// ============================================
+// MODULE: VOLUNTEERS (MVP)
+// ============================================
+
+model Volunteer {
+  id           String   @id @default(cuid())
+  tenantId     String
+  userId       String   // Reference to User
+  status       String   @default("pending") // pending, approved, rejected
+  skills       String[]
+  availability String?  @db.Text // JSON or text
+  notes        String?  @db.Text
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignments  VolunteerAssignment[]
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+  @@index([userId])
+  @@map("volunteers")
+}
+
+model VolunteerMission {
+  id              String    @id @default(cuid())
+  tenantId        String
+  title           String
+  description     String?   @db.Text
+  requiredCount   Int       @default(1)
+  startDate       DateTime?
+  endDate         DateTime?
+  location        String?
+  createdBy       String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assignments     VolunteerAssignment[]
+
+  @@index([tenantId])
+  @@map("volunteer_missions")
+}
+
+model VolunteerRole {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?  @db.Text
+  color       String?
+  createdBy   String
+  createdAt   DateTime @default(now())
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("volunteer_roles")
+}
+
+model VolunteerAssignment {
+  id         String   @id @default(cuid())
+  tenantId   String
+  volunteerId String
+  missionId  String
+  roleId     String?
+  status     String   @default("assigned") // assigned, confirmed, completed, cancelled
+  notes      String?  @db.Text
+  assignedAt DateTime @default(now())
+
+  volunteer  Volunteer        @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  mission    VolunteerMission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@unique([volunteerId, missionId])
+  @@index([tenantId])
+  @@index([volunteerId])
+  @@index([missionId])
+  @@map("volunteer_assignments")
+}
