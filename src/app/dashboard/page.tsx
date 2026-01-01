@@ -1,23 +1,29 @@
-import { auth } from "@/lib/auth";
+import { currentUser } from "@clerk/nextjs/server";
+import { UserButton } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
-  const session = await auth();
+  const user = await currentUser();
 
-  if (!session?.user) {
-    redirect("/signin");
+  if (!user) {
+    redirect("/sign-in");
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <div className="container mx-auto px-4 py-8">
         <div className="glass-card p-8 rounded-2xl max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold mb-4">
-            Bienvenue sur ORIZON
-          </h1>
-          <p className="text-muted-foreground mb-6">
-            Bonjour {session.user.name} !
-          </p>
+          <div className="flex justify-between items-start mb-6">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">
+                Bienvenue sur ORIZON
+              </h1>
+              <p className="text-muted-foreground">
+                Bonjour {user.firstName || user.emailAddresses[0].emailAddress} !
+              </p>
+            </div>
+            <UserButton afterSignOutUrl="/" />
+          </div>
 
           <div className="space-y-6">
             <div className="p-6 border rounded-lg">
@@ -25,7 +31,7 @@ export default async function DashboardPage() {
                 Tableau de bord
               </h2>
               <p className="text-sm text-muted-foreground">
-                Votre plateforme de gestion d'événements est prête. Les fonctionnalités seront ajoutées prochainement.
+                Votre plateforme de gestion d&apos;événements est prête. Les fonctionnalités seront ajoutées prochainement.
               </p>
             </div>
 

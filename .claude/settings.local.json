@@ -23,7 +23,14 @@
       "Bash(git branch:*)",
       "Bash(git push:*)",
       "Bash(npm uninstall:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(gcloud --version:*)",
+      "Bash(gcloud auth:*)",
+      "Bash(gcloud projects list:*)",
+      "Bash(gcloud config set:*)",
+      "Bash(gcloud services enable:*)",
+      "Bash(gcloud services list:*)",
+      "Bash(echo:*)"
     ]
   }
 }
