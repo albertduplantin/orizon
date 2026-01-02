@@ -1,6 +1,8 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
+import { db } from "@/db";
+import { tenants, tenantMembers, users, volunteers, volunteerMissions, volunteerAssignments } from "@/db/schema";
+import { eq, and, desc, count } from "drizzle-orm";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -19,45 +21,68 @@ export default async function VolunteersPage({ params }: PageProps) {
   }
 
   // Get tenant and check access
-  const tenant = await prisma.tenant.findUnique({
-    where: { slug: tenantSlug },
-    include: {
-      members: {
-        where: {
-          user: {
-            clerkId: user.id,
-          },
-        },
-      },
-      volunteers: {
-        include: {
-          user: true,
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-      },
-      volunteerMissions: {
-        include: {
-          _count: {
-            select: {
-              assignments: true,
-            },
-          },
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-      },
-    },
+  const tenant = await db.query.tenants.findFirst({
+    where: eq(tenants.slug, tenantSlug),
   });
 
-  if (!tenant || tenant.members.length === 0) {
+  if (!tenant) {
     redirect("/dashboard");
   }
 
-  const pendingVolunteers = tenant.volunteers.filter((v) => v.status === "pending");
-  const approvedVolunteers = tenant.volunteers.filter((v) => v.status === "approved");
+  // Check if user is a member
+  const dbUser = await db.query.users.findFirst({
+    where: eq(users.clerkId, user.id),
+  });
+
+  if (!dbUser) {
+    redirect("/dashboard");
+  }
+
+  const member = await db.query.tenantMembers.findFirst({
+    where: and(
+      eq(tenantMembers.tenantId, tenant.id),
+      eq(tenantMembers.userId, dbUser.id)
+    ),
+  });
+
+  if (!member) {
+    redirect("/dashboard");
+  }
+
+  // Get volunteers with user data
+  const tenantVolunteers = await db.query.volunteers.findMany({
+    where: eq(volunteers.tenantId, tenant.id),
+    with: {
+      user: true,
+    },
+    orderBy: [desc(volunteers.createdAt)],
+  });
+
+  // Get volunteer missions with assignment counts
+  const missions = await db.query.volunteerMissions.findMany({
+    where: eq(volunteerMissions.tenantId, tenant.id),
+    orderBy: [desc(volunteerMissions.createdAt)],
+  });
+
+  // Get assignment counts for each mission
+  const missionsWithCounts = await Promise.all(
+    missions.map(async (mission) => {
+      const [assignmentCount] = await db
+        .select({ count: count() })
+        .from(volunteerAssignments)
+        .where(eq(volunteerAssignments.missionId, mission.id));
+
+      return {
+        ...mission,
+        _count: {
+          assignments: assignmentCount?.count || 0,
+        },
+      };
+    })
+  );
+
+  const pendingVolunteers = tenantVolunteers.filter((v) => v.status === "pending");
+  const approvedVolunteers = tenantVolunteers.filter((v) => v.status === "approved");
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -88,7 +113,7 @@ export default async function VolunteersPage({ params }: PageProps) {
         <div className="grid gap-4 md:grid-cols-4 mb-8">
           <div className="glass-card p-6 rounded-xl">
             <h3 className="text-sm font-medium text-muted-foreground mb-1">Total bénévoles</h3>
-            <p className="text-3xl font-bold">{tenant.volunteers.length}</p>
+            <p className="text-3xl font-bold">{tenantVolunteers.length}</p>
           </div>
           <div className="glass-card p-6 rounded-xl">
             <h3 className="text-sm font-medium text-muted-foreground mb-1">Approuvés</h3>
@@ -100,7 +125,7 @@ export default async function VolunteersPage({ params }: PageProps) {
           </div>
           <div className="glass-card p-6 rounded-xl">
             <h3 className="text-sm font-medium text-muted-foreground mb-1">Missions</h3>
-            <p className="text-3xl font-bold">{tenant.volunteerMissions.length}</p>
+            <p className="text-3xl font-bold">{missionsWithCounts.length}</p>
           </div>
         </div>
 
@@ -108,7 +133,7 @@ export default async function VolunteersPage({ params }: PageProps) {
           {/* Volunteers List */}
           <div className="glass-card p-6 rounded-xl">
             <h2 className="text-xl font-semibold mb-4">Bénévoles récents</h2>
-            {tenant.volunteers.length === 0 ? (
+            {tenantVolunteers.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-muted-foreground mb-4">
                   Aucun bénévole pour le moment
@@ -119,7 +144,7 @@ export default async function VolunteersPage({ params }: PageProps) {
               </div>
             ) : (
               <div className="space-y-3">
-                {tenant.volunteers.slice(0, 5).map((volunteer) => (
+                {tenantVolunteers.slice(0, 5).map((volunteer) => (
                   <div
                     key={volunteer.id}
                     className="p-4 border rounded-lg hover:bg-white/50 transition-colors"
@@ -152,7 +177,7 @@ export default async function VolunteersPage({ params }: PageProps) {
                     </div>
                   </div>
                 ))}
-                {tenant.volunteers.length > 5 && (
+                {tenantVolunteers.length > 5 && (
                   <div className="text-center pt-2">
                     <Link href={`/dashboard/${tenantSlug}/volunteers/list`}>
                       <Button variant="link">Voir tous les bénévoles</Button>
@@ -166,7 +191,7 @@ export default async function VolunteersPage({ params }: PageProps) {
           {/* Missions List */}
           <div className="glass-card p-6 rounded-xl">
             <h2 className="text-xl font-semibold mb-4">Missions récentes</h2>
-            {tenant.volunteerMissions.length === 0 ? (
+            {missionsWithCounts.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-muted-foreground mb-4">
                   Aucune mission créée
@@ -177,7 +202,7 @@ export default async function VolunteersPage({ params }: PageProps) {
               </div>
             ) : (
               <div className="space-y-3">
-                {tenant.volunteerMissions.slice(0, 5).map((mission) => (
+                {missionsWithCounts.slice(0, 5).map((mission) => (
                   <div
                     key={mission.id}
                     className="p-4 border rounded-lg hover:bg-white/50 transition-colors"
@@ -202,7 +227,7 @@ export default async function VolunteersPage({ params }: PageProps) {
                     )}
                   </div>
                 ))}
-                {tenant.volunteerMissions.length > 5 && (
+                {missionsWithCounts.length > 5 && (
                   <div className="text-center pt-2">
                     <Link href={`/dashboard/${tenantSlug}/volunteers/missions`}>
                       <Button variant="link">Voir toutes les missions</Button>

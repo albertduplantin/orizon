@@ -1,7 +1,9 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { UserButton } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
+import { db } from "@/db";
+import { tenants, tenantMembers, tenantModules, users, volunteers, volunteerMissions } from "@/db/schema";
+import { eq, and, count } from "drizzle-orm";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -20,23 +22,10 @@ export default async function TenantDashboardPage({ params }: PageProps) {
   }
 
   // Get tenant and check user has access
-  const tenant = await prisma.tenant.findUnique({
-    where: { slug: tenantSlug },
-    include: {
-      members: {
-        where: {
-          user: {
-            clerkId: user.id,
-          },
-        },
-      },
+  const tenant = await db.query.tenants.findFirst({
+    where: eq(tenants.slug, tenantSlug),
+    with: {
       modules: true,
-      _count: {
-        select: {
-          volunteers: true,
-          volunteerMissions: true,
-        },
-      },
     },
   });
 
@@ -45,11 +34,36 @@ export default async function TenantDashboardPage({ params }: PageProps) {
   }
 
   // Check if user is a member of this tenant
-  if (tenant.members.length === 0) {
+  const dbUser = await db.query.users.findFirst({
+    where: eq(users.clerkId, user.id),
+  });
+
+  if (!dbUser) {
     redirect("/dashboard");
   }
 
-  const member = tenant.members[0];
+  const member = await db.query.tenantMembers.findFirst({
+    where: and(
+      eq(tenantMembers.tenantId, tenant.id),
+      eq(tenantMembers.userId, dbUser.id)
+    ),
+  });
+
+  if (!member) {
+    redirect("/dashboard");
+  }
+
+  // Get counts
+  const [volunteersCount] = await db
+    .select({ count: count() })
+    .from(volunteers)
+    .where(eq(volunteers.tenantId, tenant.id));
+
+  const [missionsCount] = await db
+    .select({ count: count() })
+    .from(volunteerMissions)
+    .where(eq(volunteerMissions.tenantId, tenant.id));
+
   const volunteersModule = tenant.modules.find((m) => m.moduleId === "volunteers");
 
   return (
@@ -81,11 +95,11 @@ export default async function TenantDashboardPage({ params }: PageProps) {
           <div className="grid gap-4 md:grid-cols-3 mb-8">
             <div className="p-6 border rounded-lg bg-white/50">
               <h3 className="text-sm font-medium text-muted-foreground mb-1">Bénévoles</h3>
-              <p className="text-3xl font-bold">{tenant._count.volunteers}</p>
+              <p className="text-3xl font-bold">{volunteersCount?.count || 0}</p>
             </div>
             <div className="p-6 border rounded-lg bg-white/50">
               <h3 className="text-sm font-medium text-muted-foreground mb-1">Missions</h3>
-              <p className="text-3xl font-bold">{tenant._count.volunteerMissions}</p>
+              <p className="text-3xl font-bold">{missionsCount?.count || 0}</p>
             </div>
             <div className="p-6 border rounded-lg bg-white/50">
               <h3 className="text-sm font-medium text-muted-foreground mb-1">Modules actifs</h3>

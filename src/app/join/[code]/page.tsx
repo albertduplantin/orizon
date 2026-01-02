@@ -1,7 +1,9 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { validateInviteCode, useInviteCode } from "@/lib/invite-codes";
-import { prisma } from "@/lib/db";
+import { db } from "@/db";
+import { tenants, users, tenantMembers } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -55,8 +57,8 @@ export default async function JoinWithCodePage({ params }: PageProps) {
   }
 
   // Get tenant information
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: validation.tenantId },
+  const tenant = await db.query.tenants.findFirst({
+    where: eq(tenants.id, validation.tenantId),
   });
 
   if (!tenant) {
@@ -76,29 +78,26 @@ export default async function JoinWithCodePage({ params }: PageProps) {
   }
 
   // Get or create user in database
-  let dbUser = await prisma.user.findUnique({
-    where: { clerkId: user.id },
+  let dbUser = await db.query.users.findFirst({
+    where: eq(users.clerkId, user.id),
   });
 
   if (!dbUser) {
-    dbUser = await prisma.user.create({
-      data: {
-        clerkId: user.id,
-        email: user.emailAddresses[0].emailAddress,
-        name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
-        image: user.imageUrl || null,
-      },
-    });
+    const [newUser] = await db.insert(users).values({
+      clerkId: user.id,
+      email: user.emailAddresses[0].emailAddress,
+      name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
+      image: user.imageUrl || null,
+    }).returning();
+    dbUser = newUser;
   }
 
   // Check if user is already a member
-  const existingMember = await prisma.tenantMember.findUnique({
-    where: {
-      tenantId_userId: {
-        tenantId: tenant.id,
-        userId: dbUser.id,
-      },
-    },
+  const existingMember = await db.query.tenantMembers.findFirst({
+    where: and(
+      eq(tenantMembers.tenantId, tenant.id),
+      eq(tenantMembers.userId, dbUser.id)
+    ),
   });
 
   if (existingMember) {

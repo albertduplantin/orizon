@@ -1,6 +1,8 @@
 // Invitation Code System - 6 letter codes
 
-import { prisma } from "./db";
+import { db } from "@/db";
+import { inviteCodes, tenantMembers, volunteers } from "@/db/schema";
+import { eq, sql } from "drizzle-orm";
 
 const CHARACTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Exclude I, O, 0, 1 to avoid confusion
 
@@ -24,23 +26,25 @@ export async function createInviteCode(data: {
   let code = generateInviteCode();
 
   // Ensure code is unique
-  let existing = await prisma.inviteCode.findUnique({ where: { code } });
+  let existing = await db.query.inviteCodes.findFirst({
+    where: eq(inviteCodes.code, code),
+  });
   while (existing) {
     code = generateInviteCode();
-    existing = await prisma.inviteCode.findUnique({ where: { code } });
+    existing = await db.query.inviteCodes.findFirst({
+      where: eq(inviteCodes.code, code),
+    });
   }
 
   // Create the invite code in database
-  await prisma.inviteCode.create({
-    data: {
-      code,
-      tenantId: data.tenantId,
-      moduleId: data.moduleId,
-      role: data.role,
-      maxUses: data.maxUses || 1,
-      expiresAt: data.expiresAt,
-      createdBy: data.createdBy,
-    },
+  await db.insert(inviteCodes).values({
+    code,
+    tenantId: data.tenantId,
+    moduleId: data.moduleId,
+    role: data.role,
+    maxUses: data.maxUses || 1,
+    expiresAt: data.expiresAt,
+    createdBy: data.createdBy,
   });
 
   return code;
@@ -53,8 +57,8 @@ export async function validateInviteCode(code: string): Promise<{
   role?: string;
   inviteCodeId?: string;
 }> {
-  const inviteCode = await prisma.inviteCode.findUnique({
-    where: { code: code.toUpperCase() },
+  const inviteCode = await db.query.inviteCodes.findFirst({
+    where: eq(inviteCodes.code, code.toUpperCase()),
   });
 
   if (!inviteCode) {
@@ -88,32 +92,27 @@ export async function useInviteCode(code: string, userId: string): Promise<void>
   }
 
   // Increment uses count
-  await prisma.inviteCode.update({
-    where: { code: code.toUpperCase() },
-    data: {
-      uses: {
-        increment: 1,
-      },
-    },
-  });
+  await db
+    .update(inviteCodes)
+    .set({
+      uses: sql`${inviteCodes.uses} + 1`,
+    })
+    .where(eq(inviteCodes.code, code.toUpperCase()));
 
   // Add user to tenant
-  await prisma.tenantMember.create({
-    data: {
-      tenantId: validation.tenantId,
-      userId,
-      role: validation.role,
-    },
+  await db.insert(tenantMembers).values({
+    tenantId: validation.tenantId,
+    userId,
+    role: validation.role,
   });
 
   // If it's for volunteers module, create volunteer entry
   if (validation.moduleId === "volunteers") {
-    await prisma.volunteer.create({
-      data: {
-        tenantId: validation.tenantId,
-        userId,
-        status: "pending",
-      },
+    await db.insert(volunteers).values({
+      tenantId: validation.tenantId,
+      userId,
+      status: "pending",
+      skills: [],
     });
   }
 }

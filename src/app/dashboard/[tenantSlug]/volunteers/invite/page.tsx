@@ -1,6 +1,8 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
+import { db } from "@/db";
+import { tenants, tenantMembers, users, inviteCodes } from "@/db/schema";
+import { eq, and, desc } from "drizzle-orm";
 import Link from "next/link";
 import { InviteCodeGenerator } from "@/components/volunteers/invite-code-generator";
 
@@ -18,38 +20,42 @@ export default async function InviteVolunteersPage({ params }: PageProps) {
     redirect("/sign-in");
   }
 
-  const tenant = await prisma.tenant.findUnique({
-    where: { slug: tenantSlug },
-    include: {
-      members: {
-        where: {
-          user: {
-            clerkId: user.id,
-          },
-        },
-      },
-      inviteCodes: {
-        where: {
-          moduleId: "volunteers",
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-      },
-    },
+  const tenant = await db.query.tenants.findFirst({
+    where: eq(tenants.slug, tenantSlug),
   });
 
-  if (!tenant || tenant.members.length === 0) {
+  if (!tenant) {
     redirect("/dashboard");
   }
 
-  const dbUser = await prisma.user.findUnique({
-    where: { clerkId: user.id },
+  // Check if user is a member
+  const dbUser = await db.query.users.findFirst({
+    where: eq(users.clerkId, user.id),
   });
 
   if (!dbUser) {
     redirect("/dashboard");
   }
+
+  const member = await db.query.tenantMembers.findFirst({
+    where: and(
+      eq(tenantMembers.tenantId, tenant.id),
+      eq(tenantMembers.userId, dbUser.id)
+    ),
+  });
+
+  if (!member) {
+    redirect("/dashboard");
+  }
+
+  // Get invite codes for volunteers module
+  const tenantInviteCodes = await db.query.inviteCodes.findMany({
+    where: and(
+      eq(inviteCodes.tenantId, tenant.id),
+      eq(inviteCodes.moduleId, "volunteers")
+    ),
+    orderBy: [desc(inviteCodes.createdAt)],
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -86,13 +92,13 @@ export default async function InviteVolunteersPage({ params }: PageProps) {
           {/* Existing Codes */}
           <div className="glass-card p-6 rounded-xl">
             <h2 className="text-xl font-semibold mb-4">Codes d&apos;invitation actifs</h2>
-            {tenant.inviteCodes.length === 0 ? (
+            {tenantInviteCodes.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 Aucun code d&apos;invitation créé
               </div>
             ) : (
               <div className="space-y-3">
-                {tenant.inviteCodes.map((inviteCode) => {
+                {tenantInviteCodes.map((inviteCode) => {
                   const isExpired =
                     inviteCode.expiresAt && inviteCode.expiresAt < new Date();
                   const isMaxed = inviteCode.uses >= inviteCode.maxUses;

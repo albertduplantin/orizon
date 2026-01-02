@@ -1,7 +1,9 @@
 import { Webhook } from "svix";
 import { headers } from "next/headers";
 import { WebhookEvent } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/db";
+import { db } from "@/db";
+import { users } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -54,14 +56,12 @@ export async function POST(req: Request) {
     const { id, email_addresses, first_name, last_name, image_url, phone_numbers } = evt.data;
 
     try {
-      await prisma.user.create({
-        data: {
-          clerkId: id,
-          email: email_addresses[0].email_address,
-          name: `${first_name || ""} ${last_name || ""}`.trim() || null,
-          image: image_url || null,
-          phone: phone_numbers?.[0]?.phone_number || null,
-        },
+      await db.insert(users).values({
+        clerkId: id,
+        email: email_addresses[0].email_address,
+        name: `${first_name || ""} ${last_name || ""}`.trim() || null,
+        image: image_url || null,
+        phone: phone_numbers?.[0]?.phone_number || null,
       });
     } catch (error) {
       console.error("Error creating user:", error);
@@ -76,15 +76,15 @@ export async function POST(req: Request) {
     const { id, email_addresses, first_name, last_name, image_url, phone_numbers } = evt.data;
 
     try {
-      await prisma.user.update({
-        where: { clerkId: id },
-        data: {
+      await db
+        .update(users)
+        .set({
           email: email_addresses[0].email_address,
           name: `${first_name || ""} ${last_name || ""}`.trim() || null,
           image: image_url || null,
           phone: phone_numbers?.[0]?.phone_number || null,
-        },
-      });
+        })
+        .where(eq(users.clerkId, id));
     } catch (error) {
       console.error("Error updating user:", error);
       return NextResponse.json(
@@ -98,9 +98,7 @@ export async function POST(req: Request) {
     const { id } = evt.data;
 
     try {
-      await prisma.user.delete({
-        where: { clerkId: id! },
-      });
+      await db.delete(users).where(eq(users.clerkId, id!));
     } catch (error) {
       console.error("Error deleting user:", error);
       return NextResponse.json(
