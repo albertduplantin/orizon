@@ -13,28 +13,38 @@ function generateSlug(name: string): string {
 
 export async function POST(req: Request) {
   try {
+    console.log("=== Starting tenant creation ===");
+
     const { userId } = await auth();
     const user = await currentUser();
 
     if (!userId || !user) {
+      console.error("Authentication failed - no user");
       return NextResponse.json(
         { error: "Non authentifié" },
         { status: 401 }
       );
     }
 
+    console.log("User authenticated:", userId);
+
     const body = await req.json();
     const { name, description, eventStartDate, eventEndDate } = body;
 
     if (!name || name.trim().length === 0) {
+      console.error("Validation failed - no name");
       return NextResponse.json(
         { error: "Le nom de l'événement est requis" },
         { status: 400 }
       );
     }
 
+    console.log("Creating tenant with name:", name);
+
     // Generate unique slug
     let slug = generateSlug(name);
+    console.log("Generated slug:", slug);
+
     let slugExists = await prisma.tenant.findUnique({ where: { slug } });
     let counter = 1;
 
@@ -44,12 +54,16 @@ export async function POST(req: Request) {
       counter++;
     }
 
+    console.log("Final slug:", slug);
+
     // Ensure user exists in database (should be created by webhook, but check anyway)
+    console.log("Checking if user exists in database...");
     let dbUser = await prisma.user.findUnique({
       where: { clerkId: userId },
     });
 
     if (!dbUser) {
+      console.log("User not found in database, creating...");
       // Create user if not exists (fallback if webhook hasn't processed yet)
       dbUser = await prisma.user.create({
         data: {
@@ -60,9 +74,13 @@ export async function POST(req: Request) {
           phone: user.phoneNumbers?.[0]?.phoneNumber || null,
         },
       });
+      console.log("User created:", dbUser.id);
+    } else {
+      console.log("User found in database:", dbUser.id);
     }
 
     // Create tenant with the user as tenant_admin
+    console.log("Creating tenant...");
     const tenant = await prisma.tenant.create({
       data: {
         name: name.trim(),
@@ -87,6 +105,8 @@ export async function POST(req: Request) {
       },
     });
 
+    console.log("Tenant created successfully:", tenant.id);
+
     return NextResponse.json({
       id: tenant.id,
       slug: tenant.slug,
@@ -94,8 +114,14 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("Error creating tenant:", error);
+    console.error("Error details:", error instanceof Error ? error.message : String(error));
+    console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace");
+
     return NextResponse.json(
-      { error: "Erreur lors de la création de l'événement" },
+      {
+        error: "Erreur lors de la création de l'événement",
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     );
   }
