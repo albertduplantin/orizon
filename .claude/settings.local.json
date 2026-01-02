@@ -38,7 +38,10 @@
       "Bash(npm run build:*)",
       "Bash(vercel --version:*)",
       "Bash(vercel:*)",
-      "Bash(npm run db:push:*)"
+      "Bash(npm run db:push:*)",
+      "Bash(if exist prisma rd /s /q prisma)",
+      "Bash(if exist prisma.config.ts del prisma.config.ts)",
+      "Bash(if exist srclibdb.ts del srclibdb.ts)"
     ]
   }
 }
