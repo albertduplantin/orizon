@@ -54,15 +54,18 @@ export default async function TenantDashboardPage({ params }: PageProps) {
   }
 
   // Get counts
-  const [volunteersCount] = await db
+  const volunteersCountResult = await db
     .select({ count: count() })
     .from(volunteers)
     .where(eq(volunteers.tenantId, tenant.id));
 
-  const [missionsCount] = await db
+  const missionsCountResult = await db
     .select({ count: count() })
     .from(volunteerMissions)
     .where(eq(volunteerMissions.tenantId, tenant.id));
+
+  const volunteersCount = volunteersCountResult[0]?.count ?? 0;
+  const missionsCount = missionsCountResult[0]?.count ?? 0;
 
   const volunteersModule = tenant.modules.find((m) => m.moduleId === "volunteers");
 
@@ -95,11 +98,11 @@ export default async function TenantDashboardPage({ params }: PageProps) {
           <div className="grid gap-4 md:grid-cols-3 mb-8">
             <div className="p-6 border rounded-lg bg-white/50">
               <h3 className="text-sm font-medium text-muted-foreground mb-1">Bénévoles</h3>
-              <p className="text-3xl font-bold">{volunteersCount?.count || 0}</p>
+              <p className="text-3xl font-bold">{volunteersCount}</p>
             </div>
             <div className="p-6 border rounded-lg bg-white/50">
               <h3 className="text-sm font-medium text-muted-foreground mb-1">Missions</h3>
-              <p className="text-3xl font-bold">{missionsCount?.count || 0}</p>
+              <p className="text-3xl font-bold">{missionsCount}</p>
             </div>
             <div className="p-6 border rounded-lg bg-white/50">
               <h3 className="text-sm font-medium text-muted-foreground mb-1">Modules actifs</h3>
