@@ -11,14 +11,23 @@ function createPrismaClient() {
   const connectionString = process.env.DATABASE_URL;
 
   if (!connectionString) {
+    console.error('DATABASE_URL environment variable is not set');
     throw new Error('DATABASE_URL environment variable is not set');
   }
 
-  const pool = new Pool({ connectionString });
-  // @ts-ignore - Type incompatibility between Pool versions
-  const adapter = new PrismaNeon(pool);
+  try {
+    const pool = new Pool({ connectionString });
+    // @ts-ignore - Type incompatibility between Pool versions
+    const adapter = new PrismaNeon(pool);
 
-  return new PrismaClient({ adapter });
+    return new PrismaClient({
+      adapter,
+      log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    });
+  } catch (error) {
+    console.error('Failed to create Prisma client:', error);
+    throw error;
+  }
 }
 
 export const prisma = global.prisma || createPrismaClient();

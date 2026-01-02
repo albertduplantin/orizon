@@ -10,22 +10,29 @@ export default async function OnboardingPage() {
     redirect("/sign-in");
   }
 
-  // Check if user already exists in database
-  const dbUser = await prisma.user.findUnique({
-    where: { clerkId: user.id },
-    include: {
-      tenantMembers: {
-        include: {
-          tenant: true,
+  let dbUser = null;
+
+  try {
+    // Check if user already exists in database
+    dbUser = await prisma.user.findUnique({
+      where: { clerkId: user.id },
+      include: {
+        tenantMembers: {
+          include: {
+            tenant: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  // If user has tenants, redirect to first tenant dashboard
-  if (dbUser && dbUser.tenantMembers.length > 0) {
-    const firstTenant = dbUser.tenantMembers[0].tenant;
-    redirect(`/dashboard/${firstTenant.slug}`);
+    // If user has tenants, redirect to first tenant dashboard
+    if (dbUser && dbUser.tenantMembers.length > 0) {
+      const firstTenant = dbUser.tenantMembers[0].tenant;
+      redirect(`/dashboard/${firstTenant.slug}`);
+    }
+  } catch (error) {
+    console.error("Onboarding database error:", error);
+    // Continue to show onboarding form even if database fails
   }
 
   return (

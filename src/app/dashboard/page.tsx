@@ -9,24 +9,30 @@ export default async function DashboardPage() {
     redirect("/sign-in");
   }
 
-  // Check if user exists in database and has tenants
-  const dbUser = await prisma.user.findUnique({
-    where: { clerkId: user.id },
-    include: {
-      tenantMembers: {
-        include: {
-          tenant: true,
+  try {
+    // Check if user exists in database and has tenants
+    const dbUser = await prisma.user.findUnique({
+      where: { clerkId: user.id },
+      include: {
+        tenantMembers: {
+          include: {
+            tenant: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  // If no user or no tenants, redirect to onboarding
-  if (!dbUser || dbUser.tenantMembers.length === 0) {
+    // If no user or no tenants, redirect to onboarding
+    if (!dbUser || dbUser.tenantMembers.length === 0) {
+      redirect("/onboarding");
+    }
+
+    // Redirect to first tenant dashboard
+    const firstTenant = dbUser.tenantMembers[0].tenant;
+    redirect(`/dashboard/${firstTenant.slug}`);
+  } catch (error) {
+    console.error("Dashboard error:", error);
+    // If database error, redirect to onboarding (user might not exist yet)
     redirect("/onboarding");
   }
-
-  // Redirect to first tenant dashboard
-  const firstTenant = dbUser.tenantMembers[0].tenant;
-  redirect(`/dashboard/${firstTenant.slug}`);
 }
