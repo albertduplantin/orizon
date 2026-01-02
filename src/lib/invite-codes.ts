@@ -1,5 +1,7 @@
 // Invitation Code System - 6 letter codes
 
+import { prisma } from "./db";
+
 const CHARACTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Exclude I, O, 0, 1 to avoid confusion
 
 export function generateInviteCode(): string {
@@ -19,10 +21,28 @@ export async function createInviteCode(data: {
   expiresAt?: Date;
   createdBy: string;
 }): Promise<string> {
-  // TODO: Implement database creation
-  // For now, just generate a code
-  const code = generateInviteCode();
-  console.log("Generated invite code:", code, data);
+  let code = generateInviteCode();
+
+  // Ensure code is unique
+  let existing = await prisma.inviteCode.findUnique({ where: { code } });
+  while (existing) {
+    code = generateInviteCode();
+    existing = await prisma.inviteCode.findUnique({ where: { code } });
+  }
+
+  // Create the invite code in database
+  await prisma.inviteCode.create({
+    data: {
+      code,
+      tenantId: data.tenantId,
+      moduleId: data.moduleId,
+      role: data.role,
+      maxUses: data.maxUses || 1,
+      expiresAt: data.expiresAt,
+      createdBy: data.createdBy,
+    },
+  });
+
   return code;
 }
 
@@ -31,14 +51,69 @@ export async function validateInviteCode(code: string): Promise<{
   tenantId?: string;
   moduleId?: string;
   role?: string;
+  inviteCodeId?: string;
 }> {
-  // TODO: Implement database validation
+  const inviteCode = await prisma.inviteCode.findUnique({
+    where: { code: code.toUpperCase() },
+  });
+
+  if (!inviteCode) {
+    return { valid: false };
+  }
+
+  // Check if expired
+  if (inviteCode.expiresAt && inviteCode.expiresAt < new Date()) {
+    return { valid: false };
+  }
+
+  // Check if max uses reached
+  if (inviteCode.uses >= inviteCode.maxUses) {
+    return { valid: false };
+  }
+
   return {
-    valid: false,
+    valid: true,
+    tenantId: inviteCode.tenantId,
+    moduleId: inviteCode.moduleId || undefined,
+    role: inviteCode.role,
+    inviteCodeId: inviteCode.id,
   };
 }
 
 export async function useInviteCode(code: string, userId: string): Promise<void> {
-  // TODO: Implement invite code usage
-  console.log(`User ${userId} used invite code ${code}`);
+  const validation = await validateInviteCode(code);
+
+  if (!validation.valid || !validation.tenantId) {
+    throw new Error("Code d'invitation invalide");
+  }
+
+  // Increment uses count
+  await prisma.inviteCode.update({
+    where: { code: code.toUpperCase() },
+    data: {
+      uses: {
+        increment: 1,
+      },
+    },
+  });
+
+  // Add user to tenant
+  await prisma.tenantMember.create({
+    data: {
+      tenantId: validation.tenantId,
+      userId,
+      role: validation.role,
+    },
+  });
+
+  // If it's for volunteers module, create volunteer entry
+  if (validation.moduleId === "volunteers") {
+    await prisma.volunteer.create({
+      data: {
+        tenantId: validation.tenantId,
+        userId,
+        status: "pending",
+      },
+    });
+  }
 }

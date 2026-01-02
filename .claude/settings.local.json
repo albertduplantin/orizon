@@ -30,7 +30,12 @@
       "Bash(gcloud config set:*)",
       "Bash(gcloud services enable:*)",
       "Bash(gcloud services list:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(if exist app dir app /b /s)",
+      "Bash(dir:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(rm:*)",
+      "Bash(npm run build:*)"
     ]
   }
 }

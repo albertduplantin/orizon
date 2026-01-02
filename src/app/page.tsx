@@ -20,12 +20,12 @@ export default function Home() {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
-            <Link href="/signup">
+            <Link href="/sign-up">
               <Button size="lg" className="text-lg px-8 h-12 w-full sm:w-auto">
                 Commencer gratuitement
               </Button>
             </Link>
-            <Link href="/signin">
+            <Link href="/sign-in">
               <Button variant="outline" size="lg" className="text-lg px-8 h-12 w-full sm:w-auto">
                 Se connecter
               </Button>
