@@ -1,6 +1,8 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
+import { db } from "@/db";
+import { users } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 export default async function DashboardPage() {
   const user = await currentUser();
@@ -11,11 +13,11 @@ export default async function DashboardPage() {
 
   try {
     // Check if user exists in database and has tenants
-    const dbUser = await prisma.user.findUnique({
-      where: { clerkId: user.id },
-      include: {
+    const dbUser = await db.query.users.findFirst({
+      where: eq(users.clerkId, user.id),
+      with: {
         tenantMembers: {
-          include: {
+          with: {
             tenant: true,
           },
         },

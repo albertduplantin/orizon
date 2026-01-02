@@ -1,6 +1,8 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
+import { db } from "@/db";
+import { users, tenantMembers } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { OnboardingForm } from "@/components/onboarding/onboarding-form";
 
 export default async function OnboardingPage() {
@@ -14,11 +16,11 @@ export default async function OnboardingPage() {
 
   try {
     // Check if user already exists in database
-    dbUser = await prisma.user.findUnique({
-      where: { clerkId: user.id },
-      include: {
+    dbUser = await db.query.users.findFirst({
+      where: eq(users.clerkId, user.id),
+      with: {
         tenantMembers: {
-          include: {
+          with: {
             tenant: true,
           },
         },

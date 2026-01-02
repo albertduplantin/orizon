@@ -37,7 +37,8 @@
       "Bash(rm:*)",
       "Bash(npm run build:*)",
       "Bash(vercel --version:*)",
-      "Bash(vercel:*)"
+      "Bash(vercel:*)",
+      "Bash(npm run db:push:*)"
     ]
   }
 }

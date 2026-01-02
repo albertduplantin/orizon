@@ -5,11 +5,12 @@
   "description": "Plateforme SaaS multitenant hypermoderne de gestion d'événements et festivals",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "drizzle-kit push && next build",
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "postinstall": "prisma generate"
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
   },
   "keywords": [
     "saas",
@@ -34,6 +35,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.45.1",
     "lucide-react": "^0.562.0",
     "next": "^16.1.1",
     "prisma": "^7.2.0",
@@ -48,6 +50,7 @@
   "devDependencies": {
     "@types/ws": "^8.18.1",
     "autoprefixer": "^10.4.23",
+    "drizzle-kit": "^0.31.8",
     "eslint": "^9.39.2",
     "eslint-config-next": "^16.1.1",
     "postcss": "^8.5.6",
