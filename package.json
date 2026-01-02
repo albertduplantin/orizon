@@ -5,10 +5,11 @@
   "description": "Plateforme SaaS multitenant hypermoderne de gestion d'événements et festivals",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "postinstall": "prisma generate"
   },
   "keywords": [
     "saas",
