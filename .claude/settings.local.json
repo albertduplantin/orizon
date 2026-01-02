@@ -35,7 +35,9 @@
       "Bash(dir:*)",
       "Bash(npm run type-check:*)",
       "Bash(rm:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(vercel --version:*)",
+      "Bash(vercel:*)"
     ]
   }
 }
