@@ -1,6 +1,4 @@
 import { PrismaClient } from '@prisma/client';
-import { Pool } from '@neondatabase/serverless';
-import { PrismaNeon } from '@prisma/adapter-neon';
 
 declare global {
   // eslint-disable-next-line no-var
@@ -8,29 +6,21 @@ declare global {
 }
 
 function createPrismaClient() {
-  const connectionString = process.env.DATABASE_URL;
-
   console.log('Creating Prisma client...');
-  console.log('DATABASE_URL present:', !!connectionString);
-  console.log('DATABASE_URL first 30 chars:', connectionString?.substring(0, 30));
+  console.log('DATABASE_URL present:', !!process.env.DATABASE_URL);
 
-  if (!connectionString) {
+  if (!process.env.DATABASE_URL) {
     console.error('DATABASE_URL environment variable is not set');
-    console.error('Available env vars:', Object.keys(process.env).filter(k => k.includes('DATABASE') || k.includes('CLERK')));
     throw new Error('DATABASE_URL environment variable is not set');
   }
 
   try {
-    console.log('Creating Pool with connection string...');
-    const pool = new Pool({ connectionString });
-    console.log('Pool created successfully');
-
-    // @ts-ignore - Type incompatibility between Pool versions
-    const adapter = new PrismaNeon(pool);
-    console.log('Adapter created successfully');
-
     const client = new PrismaClient({
-      adapter,
+      datasources: {
+        db: {
+          url: process.env.DATABASE_URL,
+        },
+      },
       log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
     });
 
