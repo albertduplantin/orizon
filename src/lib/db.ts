@@ -4,37 +4,44 @@ import { PrismaNeon } from '@prisma/adapter-neon';
 
 declare global {
   // eslint-disable-next-line no-var
-  var prisma: PrismaClient | undefined;
+  var cachedPrisma: PrismaClient | undefined;
 }
 
-function createPrismaClient() {
-  console.log('Creating Prisma client...');
-  console.log('DATABASE_URL present:', !!process.env.DATABASE_URL);
+let prisma: PrismaClient;
 
-  if (!process.env.DATABASE_URL) {
-    console.error('DATABASE_URL environment variable is not set');
-    throw new Error('DATABASE_URL environment variable is not set');
+if (process.env.NODE_ENV === 'production') {
+  // En production, on crée toujours un nouveau client
+  const connectionString = process.env.DATABASE_URL;
+
+  if (!connectionString) {
+    throw new Error('DATABASE_URL must be set');
   }
 
-  try {
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const pool = new Pool({ connectionString });
+  const adapter = new PrismaNeon(pool as any);
+
+  prisma = new PrismaClient({
+    adapter: adapter as any,
+    log: ['error'],
+  });
+} else {
+  // En développement, on réutilise le client existant
+  if (!global.cachedPrisma) {
+    const connectionString = process.env.DATABASE_URL;
+
+    if (!connectionString) {
+      throw new Error('DATABASE_URL must be set');
+    }
+
+    const pool = new Pool({ connectionString });
     const adapter = new PrismaNeon(pool as any);
 
-    const client = new PrismaClient({
+    global.cachedPrisma = new PrismaClient({
       adapter: adapter as any,
-      log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+      log: ['query', 'error', 'warn'],
     });
-
-    console.log('PrismaClient created successfully');
-    return client;
-  } catch (error) {
-    console.error('Failed to create Prisma client:', error);
-    throw error;
   }
+  prisma = global.cachedPrisma;
 }
 
-export const prisma = global.prisma || createPrismaClient();
-
-if (process.env.NODE_ENV !== 'production') {
-  global.prisma = prisma;
-}
+export { prisma };
