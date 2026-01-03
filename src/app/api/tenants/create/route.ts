@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { users, tenants, tenantMembers, tenantModules } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { provisionModuleChannels } from "@/lib/communication/channel-provisioning";
 
 function generateSlug(name: string): string {
   return name
@@ -113,7 +114,26 @@ export async function POST(req: Request) {
       billingStatus: "granted",
     });
 
-    console.log("Module activated");
+    console.log("Volunteers module activated");
+
+    // Activate Communication module
+    await db.insert(tenantModules).values({
+      tenantId: tenant.id,
+      moduleId: "communication",
+      enabled: true,
+      billingStatus: "granted",
+    });
+
+    console.log("Communication module activated");
+
+    // Auto-provision Communication channels
+    const channels = await provisionModuleChannels(
+      tenant.id,
+      "communication",
+      dbUser.id
+    );
+
+    console.log(`Created ${channels.length} communication channels`);
     console.log("Tenant created successfully:", tenant.id);
 
     return NextResponse.json({
