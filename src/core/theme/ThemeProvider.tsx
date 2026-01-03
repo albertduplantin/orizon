@@ -37,17 +37,21 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     const root = document.documentElement;
 
+    // Convert camelCase to kebab-case for CSS variables
+    const toKebabCase = (str: string) =>
+      str.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+
     // Apply CSS variables
     Object.entries(themeConfig.colors).forEach(([key, value]) => {
-      root.style.setProperty(`--${key}`, value);
+      root.style.setProperty(`--${toKebabCase(key)}`, value);
     });
 
     Object.entries(themeConfig.glass).forEach(([key, value]) => {
-      root.style.setProperty(`--glass-${key}`, value);
+      root.style.setProperty(`--glass-${toKebabCase(key)}`, value);
     });
 
     Object.entries(themeConfig.shadows).forEach(([key, value]) => {
-      root.style.setProperty(`--shadow-${key}`, value);
+      root.style.setProperty(`--shadow-${toKebabCase(key)}`, value);
     });
   }, [theme, mounted, themeConfig]);
 
