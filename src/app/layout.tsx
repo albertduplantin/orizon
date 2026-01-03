@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { frFR } from "@clerk/localizations";
+import { ThemeProvider } from "@/core/theme/ThemeProvider";
+import { RealtimeProvider } from "@/core/realtime/RealtimeProvider";
 import "@/styles/globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -18,8 +20,12 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider localization={frFR}>
-      <html lang="fr">
-        <body className={inter.className}>{children}</body>
+      <html lang="fr" suppressHydrationWarning>
+        <body className={inter.className}>
+          <ThemeProvider>
+            <RealtimeProvider>{children}</RealtimeProvider>
+          </ThemeProvider>
+        </body>
       </html>
     </ClerkProvider>
   );
