@@ -10,6 +10,13 @@ export type Permission =
   | "finance.view"
   | "finance.edit"
   | "settings.tenant.manage"
+  // Communication permissions
+  | "communication.view"
+  | "communication.send"
+  | "communication.channels.create"
+  | "communication.channels.manage"
+  | "communication.moderate"
+  | "communication.ai.generate"
   | "*"; // Super admin wildcard
 
 export type SystemRole = "super_admin" | "tenant_admin" | "module_manager" | "member" | "volunteer";
@@ -22,10 +29,53 @@ export const SYSTEM_ROLES: Record<SystemRole, Permission[]> = {
     "volunteers.create",
     "volunteers.assign",
     "volunteers.roles.manage",
+    "communication.view",
+    "communication.send",
+    "communication.channels.create",
+    "communication.channels.manage",
+    "communication.moderate",
+    "communication.ai.generate",
   ],
-  module_manager: ["volunteers.view", "volunteers.create", "volunteers.assign"],
-  member: ["volunteers.view"],
-  volunteer: ["volunteers.view"],
+  module_manager: [
+    "volunteers.view",
+    "volunteers.create",
+    "volunteers.assign",
+    "communication.view",
+    "communication.send",
+    "communication.channels.create",
+    "communication.moderate",
+  ],
+  member: [
+    "volunteers.view",
+    "communication.view",
+    "communication.send",
+  ],
+  volunteer: [
+    "volunteers.view",
+    "communication.view",
+  ],
+};
+
+// Permissions spécifiques aux rôles de channel
+export const CHANNEL_ROLE_PERMISSIONS = {
+  admin: [
+    "channel.manage",
+    "channel.invite",
+    "channel.moderate",
+    "channel.pin",
+    "channel.archive",
+    "channel.delete",
+  ],
+  moderator: [
+    "channel.moderate",
+    "channel.invite",
+    "channel.pin",
+  ],
+  member: [
+    "channel.read",
+    "channel.write",
+    "channel.react",
+  ],
 };
 
 export async function checkPermission(

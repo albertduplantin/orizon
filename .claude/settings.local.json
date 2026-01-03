@@ -41,7 +41,8 @@
       "Bash(npm run db:push:*)",
       "Bash(if exist prisma rd /s /q prisma)",
       "Bash(if exist prisma.config.ts del prisma.config.ts)",
-      "Bash(if exist srclibdb.ts del srclibdb.ts)"
+      "Bash(if exist srclibdb.ts del srclibdb.ts)",
+      "Bash(npx drizzle-kit studio --port 4983)"
     ]
   }
 }

@@ -57,6 +57,8 @@ export const tenantsRelations = relations(tenants, ({ many }) => ({
   roles: many(roles),
   volunteers: many(volunteers),
   volunteerMissions: many(volunteerMissions),
+  channels: many(channels),
+  aiSummaries: many(aiSummaries),
 }));
 
 export const tenantMembers = pgTable('tenant_members', {
@@ -269,5 +271,198 @@ export const volunteerAssignmentsRelations = relations(volunteerAssignments, ({ 
   mission: one(volunteerMissions, {
     fields: [volunteerAssignments.missionId],
     references: [volunteerMissions.id],
+  }),
+}));
+
+// ============================================
+// MODULE: COMMUNICATION
+// ============================================
+
+export const channels = pgTable('channels', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  tenantId: text('tenantId').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+
+  // Identification
+  name: text('name').notNull(),
+  slug: text('slug').notNull(),
+  description: text('description'),
+
+  // Type détermine le comportement
+  type: text('type').notNull().default('public'),
+  // 'public' | 'private' | 'direct' | 'module' | 'broadcast'
+
+  // Association au module (null si channel général)
+  moduleId: text('moduleId'),
+
+  // Métadonnées
+  topic: text('topic'),
+  pinnedMessageIds: text('pinnedMessageIds').array().default([]),
+
+  // Archivage
+  isArchived: boolean('isArchived').default(false).notNull(),
+  archivedAt: timestamp('archivedAt'),
+  archivedBy: text('archivedBy'),
+  autoArchiveAfterDays: integer('autoArchiveAfterDays'),
+
+  // Création
+  createdBy: text('createdBy').notNull(),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+}, (table) => ({
+  tenantSlugIdx: uniqueIndex('channels_tenantId_slug_key').on(table.tenantId, table.slug),
+  tenantIdIdx: index('channels_tenantId_idx').on(table.tenantId),
+  moduleIdIdx: index('channels_moduleId_idx').on(table.moduleId),
+  typeIdx: index('channels_type_idx').on(table.type),
+}));
+
+export const channelMembers = pgTable('channel_members', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  channelId: text('channelId').notNull().references(() => channels.id, { onDelete: 'cascade' }),
+  userId: text('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  tenantId: text('tenantId').notNull(),
+
+  // Rôle dans le channel (admin, moderator, member)
+  role: text('role').notNull().default('member'),
+
+  // Préférences notifications
+  notificationLevel: text('notificationLevel').default('all').notNull(),
+  // 'all' | 'mentions' | 'none'
+  isMuted: boolean('isMuted').default(false).notNull(),
+
+  // Tracking lecture
+  lastReadAt: timestamp('lastReadAt'),
+  lastReadMessageId: text('lastReadMessageId'),
+
+  joinedAt: timestamp('joinedAt').defaultNow().notNull(),
+  invitedBy: text('invitedBy'),
+}, (table) => ({
+  channelUserIdx: uniqueIndex('channel_members_channelId_userId_key')
+    .on(table.channelId, table.userId),
+  channelIdIdx: index('channel_members_channelId_idx').on(table.channelId),
+  userIdIdx: index('channel_members_userId_idx').on(table.userId),
+  tenantIdIdx: index('channel_members_tenantId_idx').on(table.tenantId),
+}));
+
+export const messages = pgTable('messages', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  channelId: text('channelId').notNull().references(() => channels.id, { onDelete: 'cascade' }),
+  tenantId: text('tenantId').notNull(),
+  userId: text('userId').notNull().references(() => users.id, { onDelete: 'set null' }),
+
+  // Contenu
+  content: text('content').notNull(),
+  type: text('type').default('text').notNull(),
+  // 'text' | 'system' | 'ai-summary' | 'task'
+
+  // Threading (pour plus tard)
+  parentMessageId: text('parentMessageId'),
+
+  // Métadonnées
+  mentions: text('mentions').array().default([]),
+  reactions: text('reactions'), // JSON: { emoji: [userId, ...] }
+
+  // Édition/Suppression
+  isEdited: boolean('isEdited').default(false).notNull(),
+  editedAt: timestamp('editedAt'),
+  isDeleted: boolean('isDeleted').default(false).notNull(),
+  deletedAt: timestamp('deletedAt'),
+
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+}, (table) => ({
+  channelIdIdx: index('messages_channelId_idx').on(table.channelId),
+  channelCreatedIdx: index('messages_channelId_createdAt_idx')
+    .on(table.channelId, table.createdAt),
+  userIdIdx: index('messages_userId_idx').on(table.userId),
+  tenantIdIdx: index('messages_tenantId_idx').on(table.tenantId),
+}));
+
+export const unreadCounts = pgTable('unread_counts', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  channelId: text('channelId').notNull().references(() => channels.id, { onDelete: 'cascade' }),
+  tenantId: text('tenantId').notNull(),
+
+  count: integer('count').default(0).notNull(),
+  mentionCount: integer('mentionCount').default(0).notNull(),
+
+  lastMessageAt: timestamp('lastMessageAt'),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+}, (table) => ({
+  userChannelIdx: uniqueIndex('unread_counts_userId_channelId_key')
+    .on(table.userId, table.channelId),
+  userIdIdx: index('unread_counts_userId_idx').on(table.userId),
+  tenantIdIdx: index('unread_counts_tenantId_idx').on(table.tenantId),
+}));
+
+export const aiSummaries = pgTable('ai_summaries', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  tenantId: text('tenantId').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  channelId: text('channelId').notNull().references(() => channels.id, { onDelete: 'cascade' }),
+
+  // Période couverte
+  startDate: timestamp('startDate').notNull(),
+  endDate: timestamp('endDate').notNull(),
+
+  // Résumé généré
+  summary: text('summary').notNull(),
+  actionItems: text('actionItems'), // JSON array
+  keyTopics: text('keyTopics').array(),
+  participantsCount: integer('participantsCount'),
+  messagesCount: integer('messagesCount'),
+
+  // Métadonnées génération
+  model: text('model').default('deepseek-chat').notNull(),
+  tokensUsed: integer('tokensUsed'),
+  generatedBy: text('generatedBy'), // 'auto' | userId
+
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+}, (table) => ({
+  channelIdIdx: index('ai_summaries_channelId_idx').on(table.channelId),
+  tenantIdIdx: index('ai_summaries_tenantId_idx').on(table.tenantId),
+  dateIdx: index('ai_summaries_endDate_idx').on(table.endDate),
+}));
+
+// Relations
+export const channelsRelations = relations(channels, ({ one, many }) => ({
+  tenant: one(tenants, {
+    fields: [channels.tenantId],
+    references: [tenants.id],
+  }),
+  messages: many(messages),
+  members: many(channelMembers),
+  summaries: many(aiSummaries),
+}));
+
+export const channelMembersRelations = relations(channelMembers, ({ one }) => ({
+  channel: one(channels, {
+    fields: [channelMembers.channelId],
+    references: [channels.id],
+  }),
+  user: one(users, {
+    fields: [channelMembers.userId],
+    references: [users.id],
+  }),
+}));
+
+export const messagesRelations = relations(messages, ({ one }) => ({
+  channel: one(channels, {
+    fields: [messages.channelId],
+    references: [channels.id],
+  }),
+  user: one(users, {
+    fields: [messages.userId],
+    references: [users.id],
+  }),
+}));
+
+export const aiSummariesRelations = relations(aiSummaries, ({ one }) => ({
+  channel: one(channels, {
+    fields: [aiSummaries.channelId],
+    references: [channels.id],
+  }),
+  tenant: one(tenants, {
+    fields: [aiSummaries.tenantId],
+    references: [tenants.id],
   }),
 }));

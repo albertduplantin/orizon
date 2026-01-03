@@ -47,6 +47,26 @@ export const AVAILABLE_MODULES: Record<string, ModuleDefinition> = {
     },
     permissions: ["ticketing.view", "ticketing.orders.manage", "ticketing.settings"],
   },
+  communication: {
+    id: "communication",
+    name: "Communication",
+    description: "Messagerie temps réel et collaboration d'équipe",
+    version: "1.0.0",
+    icon: "MessageSquare",
+    category: "communication",
+    pricing: {
+      free: true,
+      tier: "base",
+    },
+    permissions: [
+      "communication.view",
+      "communication.send",
+      "communication.channels.create",
+      "communication.channels.manage",
+      "communication.moderate",
+      "communication.ai.generate",
+    ],
+  },
   // Add more modules here as they are developed
 };
 
