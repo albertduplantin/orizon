@@ -18,12 +18,14 @@ interface Channel {
 interface CommunicationClientProps {
   channels: Channel[];
   userId: string;
+  userName: string;
   tenantId: string;
 }
 
 export function CommunicationClient({
   channels,
   userId,
+  userName,
   tenantId,
 }: CommunicationClientProps) {
   const [activeChannelId, setActiveChannelId] = useState<string | null>(
@@ -44,6 +46,7 @@ export function CommunicationClient({
         <MessageArea
           channel={activeChannel}
           userId={userId}
+          userName={userName}
           tenantId={tenantId}
         />
       ) : (

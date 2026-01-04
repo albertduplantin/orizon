@@ -86,6 +86,7 @@ export default async function CommunicationPage({ params }: PageProps) {
           <CommunicationClient
             channels={userChannels}
             userId={dbUser.id}
+            userName={dbUser.name || 'Utilisateur'}
             tenantId={tenant.id}
           />
         </div>

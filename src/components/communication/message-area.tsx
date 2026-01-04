@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { MessageList } from "./message-list";
 import { MessageInput } from "./message-input";
 import { useRealtimeMessages } from "@/lib/supabase/useRealtimeMessages";
+import { useTypingIndicator } from "@/lib/supabase/useTypingIndicator";
 
 interface Channel {
   id: string;
@@ -28,10 +29,11 @@ interface Message {
 interface MessageAreaProps {
   channel: Channel;
   userId: string;
+  userName: string;
   tenantId: string;
 }
 
-export function MessageArea({ channel, userId, tenantId }: MessageAreaProps) {
+export function MessageArea({ channel, userId, userName, tenantId }: MessageAreaProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -83,8 +85,18 @@ export function MessageArea({ channel, userId, tenantId }: MessageAreaProps) {
     onNewMessage: handleNewMessage,
   });
 
+  // Gérer l'indicateur de frappe
+  const { typingUsers, startTyping, stopTyping } = useTypingIndicator({
+    channelId: channel.id,
+    currentUserId: userId,
+    currentUserName: userName,
+  });
+
   const handleSendMessage = async (content: string) => {
     try {
+      // Arrêter l'indicateur de frappe avant d'envoyer
+      stopTyping();
+
       const res = await fetch('/api/communication/messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -133,9 +145,21 @@ export function MessageArea({ channel, userId, tenantId }: MessageAreaProps) {
         messagesEndRef={messagesEndRef}
       />
 
+      {/* Typing Indicator */}
+      {typingUsers.length > 0 && (
+        <div className="px-4 py-2 text-sm text-muted-foreground italic">
+          {typingUsers.length === 1
+            ? `${typingUsers[0].userName} est en train d'écrire...`
+            : typingUsers.length === 2
+            ? `${typingUsers[0].userName} et ${typingUsers[1].userName} sont en train d'écrire...`
+            : `${typingUsers.length} personnes sont en train d'écrire...`}
+        </div>
+      )}
+
       {/* Input */}
       <MessageInput
         onSend={handleSendMessage}
+        onTyping={startTyping}
         placeholder={`Message dans #${channel.name}`}
       />
     </div>

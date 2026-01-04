@@ -7,10 +7,11 @@ import { Send } from "lucide-react";
 
 interface MessageInputProps {
   onSend: (content: string) => Promise<void>;
+  onTyping?: () => void;
   placeholder?: string;
 }
 
-export function MessageInput({ onSend, placeholder }: MessageInputProps) {
+export function MessageInput({ onSend, onTyping, placeholder }: MessageInputProps) {
   const [content, setContent] = useState("");
   const [isSending, setIsSending] = useState(false);
 
@@ -37,12 +38,20 @@ export function MessageInput({ onSend, placeholder }: MessageInputProps) {
     }
   };
 
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setContent(e.target.value);
+    // Déclencher l'indicateur de frappe
+    if (onTyping && e.target.value.trim()) {
+      onTyping();
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="border-t border-gray-200/50 p-4 bg-white/60 backdrop-blur-sm">
       <div className="flex gap-2">
         <Textarea
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={handleChange}
           onKeyDown={handleKeyDown}
           placeholder={placeholder || "Écrivez votre message..."}
           className="resize-none bg-white/80 border-gray-200/50 focus:border-primary/50"
