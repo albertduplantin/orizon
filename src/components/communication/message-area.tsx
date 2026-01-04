@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { MessageList } from "./message-list";
 import { MessageInput } from "./message-input";
+import { useRealtimeMessages } from "@/lib/supabase/useRealtimeMessages";
 
 interface Channel {
   id: string;
@@ -17,7 +18,7 @@ interface Message {
   userId: string;
   createdAt: Date;
   type?: string;
-  user: {
+  user?: {
     id: string;
     name: string | null;
     image: string | null;
@@ -59,6 +60,28 @@ export function MessageArea({ channel, userId, tenantId }: MessageAreaProps) {
 
     loadMessages();
   }, [channel.id]);
+
+  // Gérer les nouveaux messages en temps réel
+  const handleNewMessage = useCallback((newMessage: Message) => {
+    setMessages(prev => {
+      // Vérifier si le message existe déjà (pour éviter les doublons)
+      if (prev.some(m => m.id === newMessage.id)) {
+        return prev;
+      }
+      return [...prev, newMessage];
+    });
+
+    // Auto-scroll vers le bas
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  }, []);
+
+  // S'abonner aux nouveaux messages via Supabase Realtime
+  useRealtimeMessages({
+    channelId: channel.id,
+    onNewMessage: handleNewMessage,
+  });
 
   const handleSendMessage = async (content: string) => {
     try {
