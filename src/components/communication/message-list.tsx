@@ -9,7 +9,7 @@ interface Message {
   userId: string;
   createdAt: Date;
   type?: string;
-  user: {
+  user?: {
     id: string;
     name: string | null;
     image: string | null;
@@ -60,7 +60,7 @@ export function MessageList({
           >
             {/* Avatar */}
             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-              {message.user.image ? (
+              {message.user?.image ? (
                 <img
                   src={message.user.image}
                   alt={message.user.name || ''}
@@ -68,7 +68,7 @@ export function MessageList({
                 />
               ) : (
                 <span className="text-sm font-semibold">
-                  {(message.user.name || 'U')[0].toUpperCase()}
+                  {(message.user?.name || 'U')[0].toUpperCase()}
                 </span>
               )}
             </div>
@@ -77,7 +77,7 @@ export function MessageList({
             <div className={`flex-1 ${isOwn ? 'text-right' : ''}`}>
               <div className="flex items-baseline gap-2 mb-1">
                 <span className="font-semibold text-sm">
-                  {message.user.name || 'Utilisateur'}
+                  {message.user?.name || 'Utilisateur'}
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {format(new Date(message.createdAt), 'HH:mm', { locale: fr })}

@@ -103,7 +103,17 @@ export async function POST(req: Request) {
     // Le WebSocket Supabase notifiera automatiquement les clients
     // grâce à la subscription postgres_changes
 
-    return NextResponse.json({ message });
+    // Retourner le message avec les infos utilisateur
+    return NextResponse.json({
+      message: {
+        ...message,
+        user: {
+          id: dbUser.id,
+          name: dbUser.name,
+          image: dbUser.image,
+        },
+      },
+    });
   } catch (error) {
     console.error("Erreur envoi message:", error);
     return NextResponse.json(
