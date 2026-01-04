@@ -118,11 +118,11 @@ export async function provisionModuleChannels(
       }
     }
 
-    // Message de bienvenue
+    // Message de bienvenue (utilise l'userId du créateur pour éviter les contraintes FK)
     await db.insert(messages).values({
       channelId: channel.id,
       tenantId,
-      userId: 'system',
+      userId: userId,
       type: 'system',
       content: `Bienvenue dans **${channelDef.name}**! ${channelDef.description}`,
     });

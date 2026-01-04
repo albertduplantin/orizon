@@ -84,7 +84,7 @@ export async function POST(req: Request) {
     await db.insert(messages).values({
       channelId: channel.id,
       tenantId,
-      userId: 'system',
+      userId: dbUser.id,
       type: 'system',
       content: `Channel **${name}** créé par ${dbUser.name || 'un utilisateur'}`,
     });
