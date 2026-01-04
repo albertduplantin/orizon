@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { users, tenants, channelMembers, channels } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { CommunicationClient } from "./client";
+import Link from "next/link";
 
 interface PageProps {
   params: Promise<{
@@ -47,25 +48,48 @@ export default async function CommunicationPage({ params }: PageProps) {
   // If no channels, show empty state
   if (userChannels.length === 0) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <h2 className="text-2xl font-bold mb-2">Aucun channel disponible</h2>
-          <p className="text-muted-foreground mb-4">
-            Le module Communication est activé mais aucun channel n'a été créé.
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Contactez un administrateur pour créer des channels.
-          </p>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <div className="container mx-auto px-4 py-8">
+          <div className="glass-card p-8 rounded-2xl max-w-2xl mx-auto">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold mb-2">Aucun channel disponible</h2>
+              <p className="text-muted-foreground mb-4">
+                Le module Communication est activé mais aucun channel n'a été créé.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Contactez un administrateur pour créer des channels.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <CommunicationClient
-      channels={userChannels}
-      userId={dbUser.id}
-      tenantId={tenant.id}
-    />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+            <Link href={`/dashboard/${tenantSlug}`} className="hover:text-foreground">
+              {tenant.name}
+            </Link>
+            <span>/</span>
+            <span>Communication</span>
+          </div>
+          <h1 className="text-3xl font-bold">Communication</h1>
+        </div>
+
+        {/* Main content */}
+        <div className="glass-card rounded-2xl overflow-hidden" style={{ height: 'calc(100vh - 250px)' }}>
+          <CommunicationClient
+            channels={userChannels}
+            userId={dbUser.id}
+            tenantId={tenant.id}
+          />
+        </div>
+      </div>
+    </div>
   );
 }

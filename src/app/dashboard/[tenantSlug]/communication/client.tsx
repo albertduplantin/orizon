@@ -33,7 +33,7 @@ export function CommunicationClient({
   const activeChannel = channels.find(c => c.id === activeChannelId);
 
   return (
-    <div className="h-full flex">
+    <div className="h-full flex bg-white/50">
       <ChannelSidebar
         channels={channels}
         activeChannelId={activeChannelId}
@@ -47,7 +47,7 @@ export function CommunicationClient({
           tenantId={tenantId}
         />
       ) : (
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex-1 flex items-center justify-center bg-white/30">
           <p className="text-muted-foreground">
             Sélectionnez un channel pour commencer
           </p>

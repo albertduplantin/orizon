@@ -91,9 +91,9 @@ export function MessageArea({ channel, userId, tenantId }: MessageAreaProps) {
   };
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col bg-white/40">
       {/* Header */}
-      <div className="h-14 border-b px-4 flex items-center">
+      <div className="h-14 border-b border-gray-200/50 px-4 flex items-center bg-white/60 backdrop-blur-sm">
         <h2 className="font-semibold"># {channel.name}</h2>
         {channel.description && (
           <span className="ml-4 text-sm text-muted-foreground">

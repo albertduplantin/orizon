@@ -38,14 +38,14 @@ export function MessageInput({ onSend, placeholder }: MessageInputProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="border-t p-4">
+    <form onSubmit={handleSubmit} className="border-t border-gray-200/50 p-4 bg-white/60 backdrop-blur-sm">
       <div className="flex gap-2">
         <Textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder || "Écrivez votre message..."}
-          className="resize-none"
+          className="resize-none bg-white/80 border-gray-200/50 focus:border-primary/50"
           rows={3}
           disabled={isSending}
         />

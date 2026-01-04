@@ -74,7 +74,7 @@ export function ChannelSidebar({
   };
 
   return (
-    <div className="w-64 border-r bg-muted/30 p-4 overflow-y-auto">
+    <div className="w-64 border-r border-gray-200/50 bg-white/30 backdrop-blur-sm p-4 overflow-y-auto">
       <h2 className="font-bold text-lg mb-4">Channels</h2>
 
       {renderChannelGroup("Annonces", broadcastChannels)}
