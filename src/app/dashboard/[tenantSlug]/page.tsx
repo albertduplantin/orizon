@@ -68,6 +68,7 @@ export default async function TenantDashboardPage({ params }: PageProps) {
   const missionsCount = missionsCountResult[0]?.count ?? 0;
 
   const volunteersModule = tenant.modules.find((m) => m.moduleId === "volunteers");
+  const communicationModule = tenant.modules.find((m) => m.moduleId === "communication");
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -137,6 +138,28 @@ export default async function TenantDashboardPage({ params }: PageProps) {
                   </div>
                 )}
 
+                {/* Communication Module */}
+                {communicationModule && communicationModule.enabled && (
+                  <div className="p-6 border rounded-lg bg-white/50 hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="text-lg font-semibold mb-1">Communication</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Messagerie temps réel pour votre équipe
+                        </p>
+                      </div>
+                      <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
+                        Actif
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Link href={`/dashboard/${tenantSlug}/communication`}>
+                        <Button>Accéder au module</Button>
+                      </Link>
+                    </div>
+                  </div>
+                )}
+
                 {/* Coming Soon Modules */}
                 <div className="p-6 border rounded-lg bg-white/30 opacity-75">
                   <div className="flex items-start justify-between mb-4">
@@ -144,20 +167,6 @@ export default async function TenantDashboardPage({ params }: PageProps) {
                       <h3 className="text-lg font-semibold mb-1">Billetterie</h3>
                       <p className="text-sm text-muted-foreground">
                         Vendez vos billets en ligne
-                      </p>
-                    </div>
-                    <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
-                      Bientôt
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-6 border rounded-lg bg-white/30 opacity-75">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-1">Communication</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Envoyez des emails à vos participants
                       </p>
                     </div>
                     <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
