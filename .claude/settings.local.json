@@ -46,7 +46,9 @@
       "Bash(mkdir:*)",
       "Bash(touch:*)",
       "Bash(if exist scriptsset-super-admin.ts type scriptsset-super-admin.ts)",
-      "Bash(npm run set-admin:*)"
+      "Bash(npm run set-admin:*)",
+      "Bash(tsx scripts/list-users.ts:*)",
+      "Bash(npx tsx:*)"
     ]
   }
 }
