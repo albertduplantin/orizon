@@ -21,6 +21,13 @@ export function Header() {
 
           {/* Navigation & User */}
           <div className="flex items-center gap-4">
+            {/* Pricing link - always visible, positioned first */}
+            <Link href="/pricing">
+              <Button variant="ghost" size="sm">
+                Tarifs
+              </Button>
+            </Link>
+
             {isSignedIn ? (
               <>
                 {/* User info */}
@@ -28,13 +35,6 @@ export function Header() {
                   <span className="text-muted-foreground">Connecté en tant que</span>
                   <span className="font-medium">{user?.primaryEmailAddress?.emailAddress}</span>
                 </div>
-
-                {/* Pricing link */}
-                <Link href="/pricing">
-                  <Button variant="ghost" size="sm">
-                    Tarifs
-                  </Button>
-                </Link>
 
                 {/* User button with sign out */}
                 <UserButton
@@ -48,11 +48,6 @@ export function Header() {
               </>
             ) : (
               <>
-                <Link href="/pricing">
-                  <Button variant="ghost" size="sm">
-                    Tarifs
-                  </Button>
-                </Link>
                 <Link href="/sign-in">
                   <Button variant="ghost" size="sm">
                     Se connecter
