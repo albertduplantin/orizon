@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Package } from "lucide-react";
 
 interface TenantActionsProps {
   tenantId: string;
@@ -47,6 +47,14 @@ export function TenantActions({ tenantId, tenantName, tenantSlug }: TenantAction
         >
           <Pencil className="w-4 h-4 mr-2" />
           Éditer
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => router.push(`/admin/tenants/${tenantId}/modules`)}
+        >
+          <Package className="w-4 h-4 mr-2" />
+          Modules
         </Button>
         <Button
           variant="destructive"

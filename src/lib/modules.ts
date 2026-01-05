@@ -71,17 +71,74 @@ export const AVAILABLE_MODULES: Record<string, ModuleDefinition> = {
 };
 
 export async function getActiveModules(tenantId: string): Promise<ModuleDefinition[]> {
-  // TODO: Query database for active modules for this tenant
-  // For now, return all available modules
-  return Object.values(AVAILABLE_MODULES);
+  const { db } = await import("@/db");
+  const { tenantModules } = await import("@/db/schema");
+  const { eq, and } = await import("drizzle-orm");
+
+  // Query database for active modules for this tenant
+  const activeModuleRecords = await db.query.tenantModules.findMany({
+    where: and(
+      eq(tenantModules.tenantId, tenantId),
+      eq(tenantModules.enabled, true)
+    ),
+  });
+
+  // Map to module definitions
+  const activeModules = activeModuleRecords
+    .map((record) => AVAILABLE_MODULES[record.moduleId])
+    .filter((module) => module !== undefined);
+
+  return activeModules;
 }
 
 export async function activateModule(tenantId: string, moduleId: string): Promise<void> {
-  // TODO: Activate module for tenant
-  console.log(`Activating module ${moduleId} for tenant ${tenantId}`);
+  const { db } = await import("@/db");
+  const { tenantModules } = await import("@/db/schema");
+  const { eq, and } = await import("drizzle-orm");
+
+  // Check if module exists in registry
+  if (!AVAILABLE_MODULES[moduleId]) {
+    throw new Error(`Module ${moduleId} not found in registry`);
+  }
+
+  // Check if module entry exists
+  const existingModule = await db.query.tenantModules.findFirst({
+    where: and(
+      eq(tenantModules.tenantId, tenantId),
+      eq(tenantModules.moduleId, moduleId)
+    ),
+  });
+
+  if (existingModule) {
+    // Update existing entry
+    await db
+      .update(tenantModules)
+      .set({ enabled: true })
+      .where(and(
+        eq(tenantModules.tenantId, tenantId),
+        eq(tenantModules.moduleId, moduleId)
+      ));
+  } else {
+    // Create new entry
+    await db.insert(tenantModules).values({
+      tenantId,
+      moduleId,
+      enabled: true,
+    });
+  }
 }
 
 export async function deactivateModule(tenantId: string, moduleId: string): Promise<void> {
-  // TODO: Deactivate module for tenant
-  console.log(`Deactivating module ${moduleId} for tenant ${tenantId}`);
+  const { db } = await import("@/db");
+  const { tenantModules } = await import("@/db/schema");
+  const { eq, and } = await import("drizzle-orm");
+
+  // Update module to disabled
+  await db
+    .update(tenantModules)
+    .set({ enabled: false })
+    .where(and(
+      eq(tenantModules.tenantId, tenantId),
+      eq(tenantModules.moduleId, moduleId)
+    ));
 }
