@@ -36,6 +36,31 @@ export function TenantEditForm({ tenant }: TenantEditFormProps) {
       eventEndDate: formData.get("eventEndDate") as string,
     };
 
+    // Validation de la plage de dates
+    if (data.eventStartDate && data.eventEndDate) {
+      const startDate = new Date(data.eventStartDate);
+      const endDate = new Date(data.eventEndDate);
+
+      if (endDate < startDate) {
+        setError("La date de fin doit être postérieure ou égale à la date de début");
+        setLoading(false);
+        return;
+      }
+    }
+
+    // Validation de la longueur du nom
+    if (data.name.length < 3) {
+      setError("Le nom de l'événement doit contenir au moins 3 caractères");
+      setLoading(false);
+      return;
+    }
+
+    if (data.name.length > 100) {
+      setError("Le nom de l'événement ne peut pas dépasser 100 caractères");
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch(`/api/admin/tenants/${tenant.id}`, {
         method: "PUT",
@@ -68,8 +93,13 @@ export function TenantEditForm({ tenant }: TenantEditFormProps) {
           name="name"
           defaultValue={tenant.name}
           required
+          minLength={3}
+          maxLength={100}
           disabled={loading}
         />
+        <p className="text-xs text-muted-foreground">
+          Entre 3 et 100 caractères
+        </p>
       </div>
 
       <div className="space-y-2">

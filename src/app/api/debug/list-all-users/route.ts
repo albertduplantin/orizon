@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { auth } from "@clerk/nextjs/server";
+import { isSuperAdmin } from "@/lib/admin/auth";
 
 export async function GET() {
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    // Only super admins can access debug endpoints
+    const isAdmin = await isSuperAdmin();
+    if (!isAdmin) {
+      return NextResponse.json(
+        { error: "Non autorisé - accès réservé aux super admins" },
+        { status: 403 }
+      );
     }
 
     const allUsers = await db.select().from(users);
