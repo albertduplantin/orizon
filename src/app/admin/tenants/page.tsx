@@ -5,6 +5,7 @@ import { count, eq, sql, desc } from "drizzle-orm";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Users, MessageSquare, Package } from "lucide-react";
+import { TenantActions } from "@/components/admin/tenant-actions";
 
 export default async function TenantsManagementPage() {
   await requireSuperAdmin();
@@ -137,17 +138,24 @@ export default async function TenantsManagementPage() {
               </div>
 
               {/* Actions */}
-              <div className="flex gap-2">
-                <Link href={`/admin/tenants/${tenant.id}`}>
-                  <Button variant="outline" size="sm">
-                    Voir les détails
-                  </Button>
-                </Link>
-                <Link href={`/dashboard/${tenant.slug}`}>
-                  <Button variant="ghost" size="sm">
-                    Voir le tenant →
-                  </Button>
-                </Link>
+              <div className="flex gap-2 justify-between items-center">
+                <div className="flex gap-2">
+                  <Link href={`/admin/tenants/${tenant.id}`}>
+                    <Button variant="outline" size="sm">
+                      Voir les détails
+                    </Button>
+                  </Link>
+                  <Link href={`/dashboard/${tenant.slug}`}>
+                    <Button variant="ghost" size="sm">
+                      Voir le tenant →
+                    </Button>
+                  </Link>
+                </div>
+                <TenantActions 
+                  tenantId={tenant.id}
+                  tenantName={tenant.name}
+                  tenantSlug={tenant.slug}
+                />
               </div>
             </div>
           ))}
