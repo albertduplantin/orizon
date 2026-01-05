@@ -92,7 +92,14 @@ export default async function TenantDashboardPage({ params }: PageProps) {
                 </p>
               )}
             </div>
-            <UserButton afterSignOutUrl="/" />
+            <div className="flex items-center gap-4">
+              <Link href="/pricing">
+                <Button variant="outline" size="sm">
+                  📊 Plans & Tarifs
+                </Button>
+              </Link>
+              <UserButton afterSignOutUrl="/" />
+            </div>
           </div>
 
           {/* Stats */}
