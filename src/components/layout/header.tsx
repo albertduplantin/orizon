@@ -3,9 +3,12 @@
 import { UserButton, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useUserRole } from "@/hooks/useUserRole";
+import { Shield } from "lucide-react";
 
 export function Header() {
   const { isSignedIn, user } = useUser();
+  const { isSuperAdmin } = useUserRole();
 
   return (
     <header className="sticky top-0 z-50 border-b bg-white/80 backdrop-blur-sm">
@@ -30,6 +33,16 @@ export function Header() {
 
             {isSignedIn ? (
               <>
+                {/* Super Admin link */}
+                {isSuperAdmin && (
+                  <Link href="/admin">
+                    <Button variant="ghost" size="sm" className="gap-2">
+                      <Shield className="w-4 h-4" />
+                      Administration
+                    </Button>
+                  </Link>
+                )}
+
                 {/* User info */}
                 <div className="hidden md:flex items-center gap-2 text-sm">
                   <span className="text-muted-foreground">Connecté en tant que</span>
