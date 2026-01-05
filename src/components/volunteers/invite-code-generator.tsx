@@ -57,8 +57,11 @@ export function InviteCodeGenerator({
       const result = await response.json();
       setGeneratedCode(result.code);
 
-      // Reset form
-      e.currentTarget.reset();
+      // Reset form safely
+      const form = e.currentTarget;
+      if (form) {
+        form.reset();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue");
     } finally {
