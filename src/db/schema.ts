@@ -12,6 +12,7 @@ export const users = pgTable('users', {
   name: text('name'),
   phone: text('phone'),
   image: text('image'),
+  role: text('role').default('user').notNull(), // user | super_admin
   createdAt: timestamp('createdAt').defaultNow().notNull(),
   updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 }, (table) => ({
