@@ -1,5 +1,4 @@
 import { currentUser } from "@clerk/nextjs/server";
-import { UserButton } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { tenants, tenantMembers, tenantModules, users, volunteers, volunteerMissions } from "@/db/schema";
@@ -92,13 +91,8 @@ export default async function TenantDashboardPage({ params }: PageProps) {
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-4">
-              <Link href="/pricing">
-                <Button variant="outline" size="sm">
-                  📊 Plans & Tarifs
-                </Button>
-              </Link>
-              <UserButton afterSignOutUrl="/" />
+            <div>
+              {/* User info is now in the global header */}
             </div>
           </div>
 

@@ -44,7 +44,9 @@
       "Bash(if exist srclibdb.ts del srclibdb.ts)",
       "Bash(npx drizzle-kit studio --port 4983)",
       "Bash(mkdir:*)",
-      "Bash(touch:*)"
+      "Bash(touch:*)",
+      "Bash(if exist scriptsset-super-admin.ts type scriptsset-super-admin.ts)",
+      "Bash(npm run set-admin:*)"
     ]
   }
 }

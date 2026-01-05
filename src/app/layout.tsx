@@ -4,6 +4,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { frFR } from "@clerk/localizations";
 import { ThemeProvider } from "@/core/theme/ThemeProvider";
 import { RealtimeProvider } from "@/core/realtime/RealtimeProvider";
+import { Header } from "@/components/layout/header";
 import "@/styles/globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -23,7 +24,10 @@ export default function RootLayout({
       <html lang="fr" suppressHydrationWarning>
         <body className={inter.className}>
           <ThemeProvider>
-            <RealtimeProvider>{children}</RealtimeProvider>
+            <RealtimeProvider>
+              <Header />
+              {children}
+            </RealtimeProvider>
           </ThemeProvider>
         </body>
       </html>
