@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, Package } from "lucide-react";
+import { Pencil, Trash2, Package, Users } from "lucide-react";
 
 interface TenantActionsProps {
   tenantId: string;
@@ -39,7 +39,7 @@ export function TenantActions({ tenantId, tenantName, tenantSlug }: TenantAction
 
   return (
     <>
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <Button
           variant="outline"
           size="sm"
@@ -55,6 +55,14 @@ export function TenantActions({ tenantId, tenantName, tenantSlug }: TenantAction
         >
           <Package className="w-4 h-4 mr-2" />
           Modules
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => router.push(`/admin/tenants/${tenantId}/members`)}
+        >
+          <Users className="w-4 h-4 mr-2" />
+          Membres
         </Button>
         <Button
           variant="destructive"

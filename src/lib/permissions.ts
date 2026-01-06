@@ -1,4 +1,10 @@
-// RBAC Permission System
+// RBAC Permission System with Rainbow Clearance Integration
+import {
+  ClearanceLevel,
+  hasAccess as hasClearanceAccess,
+  getClearanceForRole,
+  CLEARANCE_LEVELS
+} from "./clearance";
 
 export type Permission =
   | "volunteers.view"
@@ -78,14 +84,134 @@ export const CHANNEL_ROLE_PERMISSIONS = {
   ],
 };
 
+/**
+ * Check if user has sufficient clearance to access a resource
+ */
+export async function checkClearance(
+  userId: string,
+  tenantId: string,
+  requiredClearance: ClearanceLevel
+): Promise<boolean> {
+  const { db } = await import("@/db");
+  const { tenantMembers, users } = await import("@/db/schema");
+  const { eq, and } = await import("drizzle-orm");
+
+  // Check if super admin (always has ultraviolet clearance)
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  });
+
+  if (user?.role === "super_admin") {
+    return true; // Super admin has ULTRAVIOLET clearance
+  }
+
+  // Get user's clearance level in this tenant
+  const membership = await db.query.tenantMembers.findFirst({
+    where: and(
+      eq(tenantMembers.userId, userId),
+      eq(tenantMembers.tenantId, tenantId)
+    ),
+  });
+
+  if (!membership) {
+    return false; // User is not a member
+  }
+
+  return hasClearanceAccess(membership.clearanceLevel as ClearanceLevel, requiredClearance);
+}
+
+/**
+ * Get user's clearance level in a tenant
+ */
+export async function getUserClearance(userId: string, tenantId: string): Promise<ClearanceLevel> {
+  const { db } = await import("@/db");
+  const { tenantMembers, users } = await import("@/db/schema");
+  const { eq, and } = await import("drizzle-orm");
+
+  // Check if super admin
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  });
+
+  if (user?.role === "super_admin") {
+    return CLEARANCE_LEVELS.ULTRAVIOLET;
+  }
+
+  // Get tenant membership
+  const membership = await db.query.tenantMembers.findFirst({
+    where: and(
+      eq(tenantMembers.userId, userId),
+      eq(tenantMembers.tenantId, tenantId)
+    ),
+  });
+
+  return (membership?.clearanceLevel as ClearanceLevel) ?? CLEARANCE_LEVELS.INFRARED;
+}
+
+/**
+ * Check resource-specific clearance
+ */
+export async function checkResourceAccess(
+  userId: string,
+  tenantId: string,
+  resourceType: string,
+  resourceId: string
+): Promise<boolean> {
+  const { db } = await import("@/db");
+  const { resourceClearance } = await import("@/db/schema");
+  const { eq, and } = await import("drizzle-orm");
+
+  // Get user's clearance
+  const userClearanceLevel = await getUserClearance(userId, tenantId);
+
+  // Check if resource has specific clearance requirement
+  const resource = await db.query.resourceClearance.findFirst({
+    where: and(
+      eq(resourceClearance.tenantId, tenantId),
+      eq(resourceClearance.resourceType, resourceType),
+      eq(resourceClearance.resourceId, resourceId)
+    ),
+  });
+
+  const requiredClearance = resource?.requiredClearance ?? CLEARANCE_LEVELS.RED;
+
+  return hasClearanceAccess(userClearanceLevel, requiredClearance as ClearanceLevel);
+}
+
 export async function checkPermission(
   userId: string,
   tenantId: string,
   permission: Permission
 ): Promise<boolean> {
-  // TODO: Implement permission checking logic
-  // This will query the database to get user roles and permissions
-  return false;
+  const { db } = await import("@/db");
+  const { tenantMembers, users } = await import("@/db/schema");
+  const { eq, and } = await import("drizzle-orm");
+
+  // Check super admin
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  });
+
+  if (user?.role === "super_admin") {
+    return true;
+  }
+
+  // Get user's role in tenant
+  const membership = await db.query.tenantMembers.findFirst({
+    where: and(
+      eq(tenantMembers.userId, userId),
+      eq(tenantMembers.tenantId, tenantId)
+    ),
+  });
+
+  if (!membership) {
+    return false;
+  }
+
+  // Get permissions for role
+  const rolePermissions = SYSTEM_ROLES[membership.role as SystemRole] ?? [];
+
+  return hasPermission(rolePermissions, permission);
 }
 
 export function hasPermission(

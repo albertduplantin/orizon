@@ -67,6 +67,7 @@ export const tenantMembers = pgTable('tenant_members', {
   tenantId: text('tenantId').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   userId: text('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
   role: text('role').notNull().default('member'),
+  clearanceLevel: integer('clearanceLevel').notNull().default(1), // Rainbow Clearance: 0-6 (infrared to ultraviolet)
   joinedAt: timestamp('joinedAt').defaultNow().notNull(),
 }, (table) => ({
   tenantUserIdx: uniqueIndex('tenant_members_tenantId_userId_key').on(table.tenantId, table.userId),
@@ -464,6 +465,47 @@ export const aiSummariesRelations = relations(aiSummaries, ({ one }) => ({
   }),
   tenant: one(tenants, {
     fields: [aiSummaries.tenantId],
+    references: [tenants.id],
+  }),
+}));
+
+// ============================================
+// RAINBOW CLEARANCE SYSTEM
+// ============================================
+// Clearance Levels:
+// 0: INFRARED - Public (general event info)
+// 1: RED - Participant (basic info)
+// 2: ORANGE - Volunteer (missions, planning)
+// 3: YELLOW - Coordinator (team management)
+// 4: GREEN - Module Manager (stats, budgets)
+// 5: BLUE - Tenant Admin (full config)
+// 6: ULTRAVIOLET - Super Admin (everything)
+
+export const resourceClearance = pgTable('resource_clearance', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  tenantId: text('tenantId').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+
+  // Resource identification
+  resourceType: text('resourceType').notNull(), // 'channel' | 'message' | 'volunteer_mission' | 'document' | 'module'
+  resourceId: text('resourceId').notNull(),
+
+  // Clearance required to access this resource
+  requiredClearance: integer('requiredClearance').notNull().default(1),
+
+  // Optional: specific permissions override
+  customPermissions: text('customPermissions'), // JSON array of permission strings
+
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+}, (table) => ({
+  resourceIdx: uniqueIndex('resource_clearance_resourceType_resourceId_key').on(table.resourceType, table.resourceId),
+  tenantIdIdx: index('resource_clearance_tenantId_idx').on(table.tenantId),
+  clearanceIdx: index('resource_clearance_requiredClearance_idx').on(table.requiredClearance),
+}));
+
+export const resourceClearanceRelations = relations(resourceClearance, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [resourceClearance.tenantId],
     references: [tenants.id],
   }),
 }));
