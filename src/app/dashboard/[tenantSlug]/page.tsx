@@ -1,10 +1,13 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { tenants, tenantMembers, tenantModules, users, volunteers, volunteerMissions } from "@/db/schema";
+import { tenants, tenantMembers, users, volunteers, volunteerMissions } from "@/db/schema";
 import { eq, and, count } from "drizzle-orm";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { getUserModules } from "@/lib/modules";
+import { getUserClearance } from "@/lib/permissions";
+import { ClearanceBadge } from "@/components/admin/clearance-badge";
+import { ModulesGrid } from "@/components/dashboard/modules-grid";
+import type { ClearanceLevel } from "@/lib/clearance";
 
 interface PageProps {
   params: Promise<{
@@ -52,6 +55,12 @@ export default async function TenantDashboardPage({ params }: PageProps) {
     redirect("/dashboard");
   }
 
+  // Get user's clearance level
+  const userClearanceLevel = await getUserClearance(dbUser.id, tenant.id);
+
+  // Get modules accessible to this user (filtered by clearance)
+  const accessibleModules = await getUserModules(tenant.id, userClearanceLevel);
+
   // Get counts
   const volunteersCountResult = await db
     .select({ count: count() })
@@ -66,9 +75,6 @@ export default async function TenantDashboardPage({ params }: PageProps) {
   const volunteersCount = volunteersCountResult[0]?.count ?? 0;
   const missionsCount = missionsCountResult[0]?.count ?? 0;
 
-  const volunteersModule = tenant.modules.find((m) => m.moduleId === "volunteers");
-  const communicationModule = tenant.modules.find((m) => m.moduleId === "communication");
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <div className="container mx-auto px-4 py-8">
@@ -80,6 +86,7 @@ export default async function TenantDashboardPage({ params }: PageProps) {
                 <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
                   {member.role === "tenant_admin" ? "Administrateur" : "Membre"}
                 </span>
+                <ClearanceBadge level={userClearanceLevel as ClearanceLevel} />
               </div>
               {tenant.description && (
                 <p className="text-muted-foreground">{tenant.description}</p>
@@ -90,9 +97,6 @@ export default async function TenantDashboardPage({ params }: PageProps) {
                   {new Date(tenant.eventEndDate).toLocaleDateString("fr-FR")}
                 </p>
               )}
-            </div>
-            <div>
-              {/* User info is now in the global header */}
             </div>
           </div>
 
@@ -107,89 +111,23 @@ export default async function TenantDashboardPage({ params }: PageProps) {
               <p className="text-3xl font-bold">{missionsCount}</p>
             </div>
             <div className="p-6 border rounded-lg bg-white/50">
-              <h3 className="text-sm font-medium text-muted-foreground mb-1">Modules actifs</h3>
-              <p className="text-3xl font-bold">{tenant.modules.filter((m) => m.enabled).length}</p>
+              <h3 className="text-sm font-medium text-muted-foreground mb-1">Modules accessibles</h3>
+              <p className="text-3xl font-bold">{accessibleModules.length}</p>
             </div>
           </div>
 
-          {/* Modules */}
+          {/* Modules Grid */}
           <div className="space-y-6">
             <div>
-              <h2 className="text-xl font-semibold mb-4">Modules disponibles</h2>
-              <div className="grid gap-4 md:grid-cols-2">
-                {/* Volunteers Module */}
-                {volunteersModule && volunteersModule.enabled && (
-                  <div className="p-6 border rounded-lg bg-white/50 hover:shadow-md transition-shadow">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h3 className="text-lg font-semibold mb-1">Gestion des Bénévoles</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Gérez vos bénévoles et leurs missions
-                        </p>
-                      </div>
-                      <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
-                        Actif
-                      </span>
-                    </div>
-                    <div className="flex gap-2">
-                      <Link href={`/dashboard/${tenantSlug}/volunteers`}>
-                        <Button>Accéder au module</Button>
-                      </Link>
-                    </div>
-                  </div>
-                )}
-
-                {/* Communication Module */}
-                {communicationModule && communicationModule.enabled && (
-                  <div className="p-6 border rounded-lg bg-white/50 hover:shadow-md transition-shadow">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h3 className="text-lg font-semibold mb-1">Communication</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Messagerie temps réel pour votre équipe
-                        </p>
-                      </div>
-                      <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
-                        Actif
-                      </span>
-                    </div>
-                    <div className="flex gap-2">
-                      <Link href={`/dashboard/${tenantSlug}/communication`}>
-                        <Button>Accéder au module</Button>
-                      </Link>
-                    </div>
-                  </div>
-                )}
-
-                {/* Coming Soon Modules */}
-                <div className="p-6 border rounded-lg bg-white/30 opacity-75">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-1">Billetterie</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Vendez vos billets en ligne
-                      </p>
-                    </div>
-                    <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
-                      Bientôt
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-6 border rounded-lg bg-white/30 opacity-75">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-1">Planning</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Organisez votre événement dans le temps
-                      </p>
-                    </div>
-                    <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
-                      Bientôt
-                    </span>
-                  </div>
-                </div>
-              </div>
+              <h2 className="text-xl font-semibold mb-2">Modules disponibles</h2>
+              <p className="text-sm text-muted-foreground mb-4">
+                Les modules sont filtrés selon votre niveau d'accréditation Rainbow
+              </p>
+              <ModulesGrid
+                modules={accessibleModules}
+                tenantSlug={tenantSlug}
+                userClearance={userClearanceLevel}
+              />
             </div>
           </div>
         </div>
