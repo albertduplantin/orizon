@@ -1,4 +1,4 @@
-// Module System - Dynamic Module Loader
+// Module System - Dynamic Module Loader with Core/Optional Split
 
 export type ModuleDefinition = {
   id: string;
@@ -12,9 +12,36 @@ export type ModuleDefinition = {
     tier: "base" | "premium" | "enterprise";
   };
   permissions: string[];
+  requiredClearance?: number; // Rainbow clearance level required (0-6)
 };
 
-// Available modules registry
+// CORE MODULES - Always available, cannot be disabled
+// Communication is a core layer used by all other modules
+export const CORE_MODULES: Record<string, ModuleDefinition> = {
+  communication: {
+    id: "communication",
+    name: "Communication",
+    description: "Messagerie temps réel et collaboration - Toujours disponible",
+    version: "1.0.0",
+    icon: "MessageSquare",
+    category: "communication",
+    pricing: {
+      free: true,
+      tier: "base",
+    },
+    permissions: [
+      "communication.view",
+      "communication.send",
+      "communication.channels.create",
+      "communication.channels.manage",
+      "communication.moderate",
+      "communication.ai.generate",
+    ],
+    requiredClearance: 1, // RED - Participants can communicate
+  },
+};
+
+// OPTIONAL MODULES - Can be activated/deactivated per tenant
 export const AVAILABLE_MODULES: Record<string, ModuleDefinition> = {
   volunteers: {
     id: "volunteers",
@@ -33,6 +60,7 @@ export const AVAILABLE_MODULES: Record<string, ModuleDefinition> = {
       "volunteers.assign",
       "volunteers.manage",
     ],
+    requiredClearance: 2, // ORANGE - Volunteers
   },
   ticketing: {
     id: "ticketing",
@@ -46,30 +74,76 @@ export const AVAILABLE_MODULES: Record<string, ModuleDefinition> = {
       tier: "premium",
     },
     permissions: ["ticketing.view", "ticketing.orders.manage", "ticketing.settings"],
+    requiredClearance: 1, // RED - Participants can buy tickets
   },
-  communication: {
-    id: "communication",
-    name: "Communication",
-    description: "Messagerie temps réel et collaboration d'équipe",
+  schedule: {
+    id: "schedule",
+    name: "Planning",
+    description: "Gestion des horaires et du planning",
     version: "1.0.0",
-    icon: "MessageSquare",
-    category: "communication",
+    icon: "Calendar",
+    category: "organization",
     pricing: {
       free: true,
       tier: "base",
     },
-    permissions: [
-      "communication.view",
-      "communication.send",
-      "communication.channels.create",
-      "communication.channels.manage",
-      "communication.moderate",
-      "communication.ai.generate",
-    ],
+    permissions: ["schedule.view", "schedule.edit", "schedule.manage"],
+    requiredClearance: 2, // ORANGE - Volunteers can see schedule
+  },
+  documents: {
+    id: "documents",
+    name: "Documents",
+    description: "Partage et gestion de documents",
+    version: "1.0.0",
+    icon: "FileText",
+    category: "organization",
+    pricing: {
+      free: true,
+      tier: "base",
+    },
+    permissions: ["documents.view", "documents.upload", "documents.manage"],
+    requiredClearance: 2, // ORANGE - Volunteers
+  },
+  analytics: {
+    id: "analytics",
+    name: "Analytiques",
+    description: "Statistiques et rapports avancés",
+    version: "1.0.0",
+    icon: "BarChart3",
+    category: "organization",
+    pricing: {
+      free: false,
+      tier: "premium",
+    },
+    permissions: ["analytics.view", "analytics.export"],
+    requiredClearance: 4, // GREEN - Module Managers
   },
   // Add more modules here as they are developed
 };
 
+/**
+ * Get all modules accessible to a user (Core + Active modules filtered by clearance)
+ */
+export async function getUserModules(tenantId: string, userClearance: number): Promise<ModuleDefinition[]> {
+  // Always include core modules
+  const coreModules = Object.values(CORE_MODULES).filter(
+    (module) => userClearance >= (module.requiredClearance ?? 0)
+  );
+
+  // Get active optional modules
+  const activeOptionalModules = await getActiveModules(tenantId);
+
+  // Filter by clearance
+  const accessibleOptionalModules = activeOptionalModules.filter(
+    (module) => userClearance >= (module.requiredClearance ?? 0)
+  );
+
+  return [...coreModules, ...accessibleOptionalModules];
+}
+
+/**
+ * Get active optional modules for a tenant (excludes core modules)
+ */
 export async function getActiveModules(tenantId: string): Promise<ModuleDefinition[]> {
   const { db } = await import("@/db");
   const { tenantModules } = await import("@/db/schema");
@@ -83,12 +157,22 @@ export async function getActiveModules(tenantId: string): Promise<ModuleDefiniti
     ),
   });
 
-  // Map to module definitions
+  // Map to module definitions (only optional modules)
   const activeModules = activeModuleRecords
     .map((record) => AVAILABLE_MODULES[record.moduleId])
     .filter((module) => module !== undefined);
 
   return activeModules;
+}
+
+/**
+ * Get all modules for a tenant (Core + Active optional modules)
+ */
+export async function getAllTenantModules(tenantId: string): Promise<ModuleDefinition[]> {
+  const coreModules = Object.values(CORE_MODULES);
+  const activeOptionalModules = await getActiveModules(tenantId);
+
+  return [...coreModules, ...activeOptionalModules];
 }
 
 export async function activateModule(tenantId: string, moduleId: string): Promise<void> {

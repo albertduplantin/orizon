@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, MessageSquare } from "lucide-react";
 import { ModulesManager } from "@/components/admin/modules-manager";
 
 interface PageProps {
@@ -41,6 +41,26 @@ export default async function TenantModulesPage({ params }: PageProps) {
             <p className="text-muted-foreground">
               Événement : <strong>{tenant.name}</strong>
             </p>
+          </div>
+
+          {/* Core Modules Info */}
+          <div className="glass-card p-6 rounded-2xl mb-6 border-2 border-primary/20">
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-lg bg-primary/10">
+                <MessageSquare className="w-6 h-6 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-lg mb-2">Module Communication (Core)</h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  La Communication est un module Core toujours disponible pour tous les événements.
+                  Elle constitue la couche de base utilisée par tous les autres modules pour permettre
+                  la collaboration en temps réel.
+                </p>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm font-medium">
+                  ✓ Toujours actif
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Modules Manager */}
