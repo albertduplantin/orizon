@@ -1,10 +1,11 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { users, tenants, channelMembers, channels } from "@/db/schema";
+import { users, tenants, channelMembers, channels, tenantMembers } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { CommunicationClient } from "./client";
 import Link from "next/link";
+import { CreateChannelDialog } from "@/components/communication/create-channel-dialog";
 
 interface PageProps {
   params: Promise<{
@@ -31,6 +32,16 @@ export default async function CommunicationPage({ params }: PageProps) {
   });
 
   if (!tenant) redirect("/dashboard");
+
+  // Check if user is tenant admin (for create channel permission)
+  const member = await db.query.tenantMembers.findFirst({
+    where: and(
+      eq(tenantMembers.tenantId, tenant.id),
+      eq(tenantMembers.userId, dbUser.id)
+    ),
+  });
+
+  const canCreateChannels = member?.role === "tenant_admin";
 
   // Get user's channels for this tenant
   const userChannelMemberships = await db.query.channelMembers.findMany({
@@ -78,7 +89,12 @@ export default async function CommunicationPage({ params }: PageProps) {
             <span>/</span>
             <span>Communication</span>
           </div>
-          <h1 className="text-3xl font-bold">Communication</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold">Communication</h1>
+            {canCreateChannels && (
+              <CreateChannelDialog tenantId={tenant.id} />
+            )}
+          </div>
         </div>
 
         {/* Main content */}
