@@ -117,7 +117,7 @@ export async function validateInviteCode(code: string): Promise<{
 export async function useInviteCode(code: string, userId: string): Promise<void> {
   const validation = await validateInviteCode(code);
 
-  if (!validation.valid || !validation.tenantId) {
+  if (!validation.valid || !validation.tenantId || !validation.role) {
     throw new Error("Code d'invitation invalide");
   }
 
