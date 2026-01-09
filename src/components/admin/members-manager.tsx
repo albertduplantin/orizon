@@ -21,9 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Shield, X, UserPlus, Search, Filter } from "lucide-react";
+import { Shield, X, UserPlus, Search, Filter, UserCircle } from "lucide-react";
 import type { ClearanceLevel } from "@/lib/clearance";
 import { ASSOCIATION_ROLES } from "@/lib/clearance-mapping";
+import Link from "next/link";
 
 interface Member {
   id: string;
@@ -309,9 +310,16 @@ export function MembersManager({ tenantId, members }: MembersManagerProps) {
                     </p>
                   </div>
 
-                  {/* Clearance Badge */}
+                  {/* Actions */}
                   <div className="flex items-center gap-3">
                     <ClearanceBadge level={member.clearanceLevel as ClearanceLevel} />
+
+                    <Link href={`/admin/tenants/${tenantId}/members/${member.id}`}>
+                      <Button variant="outline" size="sm">
+                        <UserCircle className="w-4 h-4 mr-2" />
+                        Profil
+                      </Button>
+                    </Link>
 
                     <Button
                       variant="outline"
@@ -320,7 +328,7 @@ export function MembersManager({ tenantId, members }: MembersManagerProps) {
                       disabled={loading}
                     >
                       <Shield className="w-4 h-4 mr-2" />
-                      {isEditing ? "Annuler" : "Modifier"}
+                      {isEditing ? "Annuler" : "Clearance"}
                     </Button>
                   </div>
                 </div>
