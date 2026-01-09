@@ -60,6 +60,9 @@ export const tenantsRelations = relations(tenants, ({ many }) => ({
   volunteerMissions: many(volunteerMissions),
   channels: many(channels),
   aiSummaries: many(aiSummaries),
+  memberProfiles: many(memberProfiles),
+  memberships: many(memberships),
+  volunteerHours: many(volunteerHours),
 }));
 
 export const tenantMembers = pgTable('tenant_members', {
@@ -507,5 +510,153 @@ export const resourceClearanceRelations = relations(resourceClearance, ({ one })
   tenant: one(tenants, {
     fields: [resourceClearance.tenantId],
     references: [tenants.id],
+  }),
+}));
+
+// ============================================
+// MEMBER PROFILES & MANAGEMENT
+// ============================================
+
+export const memberProfiles = pgTable('member_profiles', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  tenantId: text('tenantId').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+
+  // Personal info
+  bio: text('bio'),
+  skills: text('skills').array(), // ['Graphisme', 'Compta', 'Logistique']
+
+  // Availability
+  availabilityWeekends: boolean('availabilityWeekends').default(false),
+  availabilityEvenings: boolean('availabilityEvenings').default(false),
+  availabilitySchoolHolidays: boolean('availabilitySchoolHolidays').default(false),
+  unavailableDates: text('unavailableDates'), // JSON: [{start, end}]
+
+  // Logistics
+  hasDriverLicense: boolean('hasDriverLicense').default(false),
+  hasVehicle: boolean('hasVehicle').default(false),
+  vehicleSeats: integer('vehicleSeats'),
+
+  // Location
+  city: text('city'),
+  postalCode: text('postalCode'),
+  maxTravelDistance: integer('maxTravelDistance'), // km
+
+  // Preferences
+  preferredMissionTypes: text('preferredMissionTypes').array(),
+
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+}, (table) => ({
+  userTenantIdx: uniqueIndex('member_profiles_userId_tenantId_key').on(table.userId, table.tenantId),
+  tenantIdIdx: index('member_profiles_tenantId_idx').on(table.tenantId),
+}));
+
+export const memberProfilesRelations = relations(memberProfiles, ({ one }) => ({
+  user: one(users, {
+    fields: [memberProfiles.userId],
+    references: [users.id],
+  }),
+  tenant: one(tenants, {
+    fields: [memberProfiles.tenantId],
+    references: [tenants.id],
+  }),
+}));
+
+// ============================================
+// MEMBERSHIPS & COTISATIONS
+// ============================================
+
+export const memberships = pgTable('memberships', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  tenantId: text('tenantId').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+
+  // Membership period
+  startDate: timestamp('startDate').notNull(),
+  endDate: timestamp('endDate').notNull(),
+  status: text('status').default('active').notNull(), // 'pending', 'active', 'expired', 'cancelled'
+
+  // Payment
+  amount: integer('amount').notNull(), // Amount in cents (e.g., 2000 = 20€)
+  paymentMethod: text('paymentMethod'), // 'hello_asso', 'stripe', 'paypal', 'cash', 'check'
+  paymentStatus: text('paymentStatus').default('pending').notNull(), // 'pending', 'paid', 'refunded'
+  paidAt: timestamp('paidAt'),
+
+  // HelloAsso integration
+  helloAssoPaymentId: text('helloAssoPaymentId'),
+  helloAssoFormUrl: text('helloAssoFormUrl'),
+
+  // Stripe integration (fallback)
+  stripePaymentIntentId: text('stripePaymentIntentId'),
+
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+}, (table) => ({
+  userTenantIdx: index('memberships_userId_tenantId_idx').on(table.userId, table.tenantId),
+  tenantIdIdx: index('memberships_tenantId_idx').on(table.tenantId),
+  statusIdx: index('memberships_status_idx').on(table.status),
+  endDateIdx: index('memberships_endDate_idx').on(table.endDate),
+}));
+
+export const membershipsRelations = relations(memberships, ({ one }) => ({
+  user: one(users, {
+    fields: [memberships.userId],
+    references: [users.id],
+  }),
+  tenant: one(tenants, {
+    fields: [memberships.tenantId],
+    references: [tenants.id],
+  }),
+}));
+
+// ============================================
+// VOLUNTEER HOURS TRACKING
+// ============================================
+
+export const volunteerHours = pgTable('volunteer_hours', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('userId').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  tenantId: text('tenantId').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+
+  // Hours details
+  date: timestamp('date').notNull(),
+  hours: integer('hours').notNull(), // Hours in minutes (e.g., 150 = 2.5 hours)
+
+  // Context
+  missionId: text('missionId').references(() => volunteerMissions.id, { onDelete: 'set null' }),
+  description: text('description'),
+
+  // Validation
+  status: text('status').default('pending').notNull(), // 'pending', 'validated', 'rejected'
+  validatedBy: text('validatedBy').references(() => users.id, { onDelete: 'set null' }),
+  validatedAt: timestamp('validatedAt'),
+  rejectionReason: text('rejectionReason'),
+
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+}, (table) => ({
+  userTenantIdx: index('volunteer_hours_userId_tenantId_idx').on(table.userId, table.tenantId),
+  tenantIdIdx: index('volunteer_hours_tenantId_idx').on(table.tenantId),
+  statusIdx: index('volunteer_hours_status_idx').on(table.status),
+  dateIdx: index('volunteer_hours_date_idx').on(table.date),
+}));
+
+export const volunteerHoursRelations = relations(volunteerHours, ({ one }) => ({
+  user: one(users, {
+    fields: [volunteerHours.userId],
+    references: [users.id],
+  }),
+  tenant: one(tenants, {
+    fields: [volunteerHours.tenantId],
+    references: [tenants.id],
+  }),
+  mission: one(volunteerMissions, {
+    fields: [volunteerHours.missionId],
+    references: [volunteerMissions.id],
+  }),
+  validator: one(users, {
+    fields: [volunteerHours.validatedBy],
+    references: [users.id],
   }),
 }));
