@@ -1,8 +1,10 @@
 // Invitation Code System - 6 letter codes
 
 import { db } from "@/db";
-import { inviteCodes, tenantMembers, volunteers } from "@/db/schema";
+import { inviteCodes, tenantMembers, volunteers, memberProfiles } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
+import { sendEmail, invitationEmailTemplate } from "./email";
+import { getClearanceForRole, getClearanceName } from "./clearance-mapping";
 
 const CHARACTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Exclude I, O, 0, 1 to avoid confusion
 
@@ -22,6 +24,7 @@ export async function createInviteCode(data: {
   maxUses?: number;
   expiresAt?: Date;
   createdBy: string;
+  email?: string; // Optional: send invitation email
 }): Promise<string> {
   let code = generateInviteCode();
 
@@ -46,6 +49,33 @@ export async function createInviteCode(data: {
     expiresAt: data.expiresAt,
     createdBy: data.createdBy,
   });
+
+  // Send invitation email if email provided
+  if (data.email) {
+    const tenant = await db.query.tenants.findFirst({
+      where: eq(inviteCodes.tenantId, data.tenantId),
+    });
+
+    if (tenant) {
+      const clearanceLevel = getClearanceForRole(data.role);
+      const clearanceName = getClearanceName(clearanceLevel);
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const inviteLink = `${baseUrl}/join/${code}`;
+
+      await sendEmail({
+        to: data.email,
+        subject: `Invitation à rejoindre ${tenant.name}`,
+        html: invitationEmailTemplate({
+          tenantName: tenant.name,
+          inviteLink,
+          role: data.role,
+          clearanceLevel,
+          clearanceName,
+          expiresAt: data.expiresAt,
+        }),
+      });
+    }
+  }
 
   return code;
 }
@@ -91,6 +121,9 @@ export async function useInviteCode(code: string, userId: string): Promise<void>
     throw new Error("Code d'invitation invalide");
   }
 
+  // Calculate clearance level from role
+  const clearanceLevel = getClearanceForRole(validation.role);
+
   // Increment uses count
   await db
     .update(inviteCodes)
@@ -99,11 +132,20 @@ export async function useInviteCode(code: string, userId: string): Promise<void>
     })
     .where(eq(inviteCodes.code, code.toUpperCase()));
 
-  // Add user to tenant
+  // Add user to tenant with clearance
   await db.insert(tenantMembers).values({
     tenantId: validation.tenantId,
     userId,
     role: validation.role,
+    clearanceLevel, // Auto-assign clearance based on role
+  });
+
+  // Create member profile
+  await db.insert(memberProfiles).values({
+    userId,
+    tenantId: validation.tenantId,
+    skills: [],
+    preferredMissionTypes: [],
   });
 
   // If it's for volunteers module, create volunteer entry
