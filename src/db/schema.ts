@@ -221,6 +221,7 @@ export const volunteerMissions = pgTable('volunteer_missions', {
   title: text('title').notNull(),
   description: text('description'),
   requiredCount: integer('requiredCount').default(1).notNull(),
+  status: text('status').notNull().default('draft'), // draft | published | in_progress | completed | cancelled
   startDate: timestamp('startDate'),
   endDate: timestamp('endDate'),
   location: text('location'),
@@ -229,6 +230,7 @@ export const volunteerMissions = pgTable('volunteer_missions', {
   updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 }, (table) => ({
   tenantIdIdx: index('volunteer_missions_tenantId_idx').on(table.tenantId),
+  statusIdx: index('volunteer_missions_status_idx').on(table.status),
 }));
 
 export const volunteerMissionsRelations = relations(volunteerMissions, ({ one, many }) => ({

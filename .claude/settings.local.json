@@ -53,7 +53,9 @@
       "Bash(npx shadcn@latest add:*)",
       "Bash(test:*)",
       "Bash(npx vercel:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(ls -la \"d:\\\\Documents\\\\aiprojets\\\\orizon\\\\src\\\\app\\\\dashboard\\\\[tenantSlug]\"\" 2>/dev/null || echo \"Checking pages structure \")",
+      "Bash(npx drizzle-kit:*)"
     ]
   }
 }
