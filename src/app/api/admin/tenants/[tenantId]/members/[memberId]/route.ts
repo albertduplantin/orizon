@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { isSuperAdmin } from "@/lib/admin/auth";
 import { db } from "@/db";
-import { tenantMembers } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { tenantMembers, volunteerMissions, volunteers } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 import { isValidClearance } from "@/lib/clearance";
 
 // PATCH - Update member clearance level
@@ -53,6 +53,65 @@ export async function PATCH(
     console.error("Error updating member clearance:", error);
     return NextResponse.json(
       { error: "Erreur lors de la mise à jour" },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE - Remove member from tenant
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ tenantId: string; memberId: string }> }
+) {
+  try {
+    const isAdmin = await isSuperAdmin();
+    if (!isAdmin) {
+      return NextResponse.json(
+        { error: "Non autorisé" },
+        { status: 403 }
+      );
+    }
+
+    const { tenantId, memberId } = await params;
+
+    // First, get the member to find the userId
+    const member = await db.query.tenantMembers.findFirst({
+      where: and(
+        eq(tenantMembers.id, memberId),
+        eq(tenantMembers.tenantId, tenantId)
+      ),
+    });
+
+    if (!member) {
+      return NextResponse.json(
+        { error: "Membre non trouvé" },
+        { status: 404 }
+      );
+    }
+
+    // Delete related volunteer missions first (if member is a volunteer)
+    const volunteer = await db.query.volunteers.findFirst({
+      where: and(
+        eq(volunteers.userId, member.userId),
+        eq(volunteers.tenantId, tenantId)
+      ),
+    });
+
+    if (volunteer) {
+      await db.delete(volunteerMissions).where(
+        eq(volunteerMissions.volunteerId, volunteer.id)
+      );
+      await db.delete(volunteers).where(eq(volunteers.id, volunteer.id));
+    }
+
+    // Delete the tenant member relationship
+    await db.delete(tenantMembers).where(eq(tenantMembers.id, memberId));
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting member:", error);
+    return NextResponse.json(
+      { error: "Erreur lors de la suppression" },
       { status: 500 }
     );
   }

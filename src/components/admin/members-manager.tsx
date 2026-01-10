@@ -15,13 +15,23 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Shield, X, UserPlus, Search, Filter, UserCircle } from "lucide-react";
+import { Shield, X, UserPlus, Search, Filter, UserCircle, AlertTriangle, Trash2 } from "lucide-react";
 import type { ClearanceLevel } from "@/lib/clearance";
 import { ASSOCIATION_ROLES } from "@/lib/clearance-mapping";
 import Link from "next/link";
@@ -47,6 +57,23 @@ export function MembersManager({ tenantId, members }: MembersManagerProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Clearance change confirmation
+  const [pendingClearanceChange, setPendingClearanceChange] = useState<{
+    memberId: string;
+    memberName: string;
+    oldLevel: number;
+    newLevel: number;
+  } | null>(null);
+
+  // Member deletion confirmation
+  const [pendingDeletion, setPendingDeletion] = useState<{
+    memberId: string;
+    memberName: string;
+    memberEmail: string;
+    role: string;
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Filters and search
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
@@ -58,6 +85,27 @@ export function MembersManager({ tenantId, members }: MembersManagerProps) {
   const [inviteRole, setInviteRole] = useState("volunteer");
   const [inviting, setInviting] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState("");
+
+  const requestClearanceChange = (memberId: string, newLevel: ClearanceLevel) => {
+    const member = localMembers.find(m => m.id === memberId);
+    if (!member) return;
+
+    // Show confirmation dialog for significant changes
+    const isDowngrade = newLevel < member.clearanceLevel;
+    const isSignificantChange = Math.abs(newLevel - member.clearanceLevel) >= 2;
+
+    if (isDowngrade || isSignificantChange) {
+      setPendingClearanceChange({
+        memberId,
+        memberName: member.userName || member.userEmail || "Utilisateur",
+        oldLevel: member.clearanceLevel,
+        newLevel,
+      });
+    } else {
+      // Apply change directly for minor upgrades
+      handleClearanceChange(memberId, newLevel);
+    }
+  };
 
   const handleClearanceChange = async (memberId: string, newLevel: ClearanceLevel) => {
     setLoading(true);
@@ -82,10 +130,43 @@ export function MembersManager({ tenantId, members }: MembersManagerProps) {
       ));
 
       setEditingMember(null);
+      setPendingClearanceChange(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getClearanceName = (level: number): string => {
+    const names = ["INFRARED", "RED", "ORANGE", "YELLOW", "GREEN", "BLUE", "ULTRAVIOLET"];
+    return names[level] || "UNKNOWN";
+  };
+
+  const handleDeleteMember = async () => {
+    if (!pendingDeletion) return;
+
+    setIsDeleting(true);
+    setError("");
+
+    try {
+      const response = await fetch(
+        `/api/admin/tenants/${tenantId}/members/${pendingDeletion.memberId}`,
+        { method: "DELETE" }
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Erreur lors de la suppression");
+      }
+
+      // Remove member from local state
+      setLocalMembers(localMembers.filter(m => m.id !== pendingDeletion.memberId));
+      setPendingDeletion(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Une erreur est survenue");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -330,6 +411,21 @@ export function MembersManager({ tenantId, members }: MembersManagerProps) {
                       <Shield className="w-4 h-4 mr-2" />
                       {isEditing ? "Annuler" : "Clearance"}
                     </Button>
+
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setPendingDeletion({
+                        memberId: member.id,
+                        memberName: member.userName || "Utilisateur sans nom",
+                        memberEmail: member.userEmail || "",
+                        role: member.role,
+                      })}
+                      disabled={loading || isDeleting}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Retirer
+                    </Button>
                   </div>
                 </div>
 
@@ -338,7 +434,7 @@ export function MembersManager({ tenantId, members }: MembersManagerProps) {
                   <div className="mt-4 pt-4 border-t">
                     <ClearanceSelector
                       value={member.clearanceLevel as ClearanceLevel}
-                      onChange={(level) => handleClearanceChange(member.id, level)}
+                      onChange={(level) => requestClearanceChange(member.id, level)}
                       disabled={loading}
                       maxLevel={5} // Admins can set up to BLUE (tenant admin)
                     />
@@ -383,6 +479,129 @@ export function MembersManager({ tenantId, members }: MembersManagerProps) {
           </div>
         </div>
       </div>
+
+      {/* Clearance Change Confirmation Dialog */}
+      <AlertDialog
+        open={!!pendingClearanceChange}
+        onOpenChange={(open) => !open && setPendingClearanceChange(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-2 text-amber-600 mb-2">
+              <AlertTriangle className="w-5 h-5" />
+              <AlertDialogTitle>Confirmer le changement de clearance</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="space-y-3">
+              {pendingClearanceChange && (
+                <>
+                  <p>
+                    Vous êtes sur le point de modifier le niveau de clearance de{" "}
+                    <strong className="text-foreground">{pendingClearanceChange.memberName}</strong>
+                  </p>
+                  <div className="p-3 bg-muted rounded-lg space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Niveau actuel :</span>
+                      <span className="font-mono font-bold">
+                        {pendingClearanceChange.oldLevel} {getClearanceName(pendingClearanceChange.oldLevel)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-center text-muted-foreground">
+                      ↓
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Nouveau niveau :</span>
+                      <span className="font-mono font-bold">
+                        {pendingClearanceChange.newLevel} {getClearanceName(pendingClearanceChange.newLevel)}
+                      </span>
+                    </div>
+                  </div>
+                  {pendingClearanceChange.newLevel < pendingClearanceChange.oldLevel && (
+                    <p className="text-amber-600 text-sm font-medium">
+                      ⚠️ Attention : Cette rétrogradation réduira les accès et permissions de ce membre.
+                    </p>
+                  )}
+                  {Math.abs(pendingClearanceChange.newLevel - pendingClearanceChange.oldLevel) >= 2 && (
+                    <p className="text-amber-600 text-sm font-medium">
+                      ⚠️ Changement significatif : Cela modifiera substantiellement les permissions.
+                    </p>
+                  )}
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                if (pendingClearanceChange) {
+                  handleClearanceChange(
+                    pendingClearanceChange.memberId,
+                    pendingClearanceChange.newLevel as ClearanceLevel
+                  );
+                }
+              }}
+              disabled={loading}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {loading ? "Modification en cours..." : "Confirmer le changement"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Member Deletion Confirmation Dialog */}
+      <AlertDialog
+        open={!!pendingDeletion}
+        onOpenChange={(open) => !open && setPendingDeletion(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-2 text-red-600 mb-2">
+              <AlertTriangle className="w-5 h-5" />
+              <AlertDialogTitle>Retirer ce membre</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="space-y-3">
+              {pendingDeletion && (
+                <>
+                  <p>
+                    Êtes-vous sûr de vouloir retirer{" "}
+                    <strong className="text-foreground">{pendingDeletion.memberName}</strong>{" "}
+                    ({pendingDeletion.memberEmail}) de cet événement ?
+                  </p>
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg space-y-2">
+                    <p className="text-sm font-medium text-red-900">
+                      ⚠️ Cette action supprimera :
+                    </p>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-red-800 ml-2">
+                      <li>L'accès de ce membre à l'événement</li>
+                      <li>Son rôle : <strong>{pendingDeletion.role}</strong></li>
+                      <li>Ses missions de bénévolat (si applicable)</li>
+                      <li>Ses affectations et historique</li>
+                    </ul>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Note : Le compte utilisateur ne sera pas supprimé, uniquement son appartenance à cet événement.
+                  </p>
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteMember();
+              }}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? "Suppression en cours..." : "Retirer ce membre"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

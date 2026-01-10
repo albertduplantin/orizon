@@ -50,7 +50,10 @@
       "Bash(tsx scripts/list-users.ts:*)",
       "Bash(npx tsx:*)",
       "Bash(git diff:*)",
-      "Bash(npx shadcn@latest add:*)"
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(test:*)",
+      "Bash(npx vercel:*)",
+      "Bash(curl:*)"
     ]
   }
 }

@@ -3,7 +3,18 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, Package, Users } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Pencil, Trash2, Package, Users, AlertTriangle } from "lucide-react";
 
 interface TenantActionsProps {
   tenantId: string;
@@ -24,6 +35,7 @@ export function TenantActions({ tenantId, tenantName, tenantSlug }: TenantAction
       });
 
       if (response.ok) {
+        router.push("/admin");
         router.refresh();
       } else {
         const data = await response.json();
@@ -38,71 +50,80 @@ export function TenantActions({ tenantId, tenantName, tenantSlug }: TenantAction
   };
 
   return (
-    <>
-      <div className="flex gap-2 flex-wrap">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => router.push(`/admin/tenants/${tenantId}/edit`)}
-        >
-          <Pencil className="w-4 h-4 mr-2" />
-          Éditer
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => router.push(`/admin/tenants/${tenantId}/modules`)}
-        >
-          <Package className="w-4 h-4 mr-2" />
-          Modules
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => router.push(`/admin/tenants/${tenantId}/members`)}
-        >
-          <Users className="w-4 h-4 mr-2" />
-          Membres
-        </Button>
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={() => setShowConfirm(true)}
-          disabled={isDeleting}
-        >
-          <Trash2 className="w-4 h-4 mr-2" />
-          Supprimer
-        </Button>
-      </div>
+    <div className="flex gap-2 flex-wrap">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => router.push(`/admin/tenants/${tenantId}/edit`)}
+      >
+        <Pencil className="w-4 h-4 mr-2" />
+        Éditer
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => router.push(`/admin/tenants/${tenantId}/modules`)}
+      >
+        <Package className="w-4 h-4 mr-2" />
+        Modules
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => router.push(`/admin/tenants/${tenantId}/members`)}
+      >
+        <Users className="w-4 h-4 mr-2" />
+        Membres
+      </Button>
 
-      {/* Confirmation Modal */}
-      {showConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="glass-card p-6 rounded-2xl max-w-md w-full">
-            <h3 className="text-xl font-bold mb-4">Confirmer la suppression</h3>
-            <p className="text-muted-foreground mb-6">
-              Êtes-vous sûr de vouloir supprimer l'événement <strong>{tenantName}</strong> ?
-              Cette action est irréversible et supprimera toutes les données associées (messages, canaux, bénévoles, etc.).
-            </p>
-            <div className="flex gap-3 justify-end">
-              <Button
-                variant="ghost"
-                onClick={() => setShowConfirm(false)}
-                disabled={isDeleting}
-              >
-                Annuler
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={isDeleting}
-              >
-                {isDeleting ? "Suppression..." : "Supprimer définitivement"}
-              </Button>
+      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <AlertDialogTrigger asChild>
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={isDeleting}
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Supprimer
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-2 text-red-600 mb-2">
+              <AlertTriangle className="w-5 h-5" />
+              <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
             </div>
-          </div>
-        </div>
-      )}
-    </>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                Êtes-vous sûr de vouloir supprimer l'événement <strong className="text-foreground">{tenantName}</strong> ?
+              </p>
+              <p className="text-red-600 font-medium">
+                ⚠️ Cette action est irréversible et supprimera définitivement :
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-sm ml-2">
+                <li>Tous les membres ({tenantSlug})</li>
+                <li>Tous les messages et canaux de communication</li>
+                <li>Tous les bénévoles et missions</li>
+                <li>Toutes les configurations de modules</li>
+                <li>Toutes les données associées à cet événement</li>
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? "Suppression en cours..." : "Supprimer définitivement"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }
