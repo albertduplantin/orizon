@@ -62,10 +62,15 @@ export default async function DashboardPage() {
 
     // Redirect to first tenant dashboard
     const firstTenant = dbUser.tenantMembers[0].tenant;
-    console.log("[DASHBOARD] Redirecting to tenant:", firstTenant.slug);
-    redirect(`/dashboard/${firstTenant.slug}`);
+    const targetUrl = `/dashboard/${firstTenant.slug}`;
+    console.log("[DASHBOARD] About to redirect to:", targetUrl);
+    console.log("[DASHBOARD] User has", dbUser.tenantMembers.length, "tenant(s)");
+    redirect(targetUrl);
   } catch (error) {
-    console.error("[DASHBOARD] Error:", error);
+    console.error("[DASHBOARD] Error occurred:", error);
+    console.error("[DASHBOARD] Error type:", error instanceof Error ? error.constructor.name : typeof error);
+    console.error("[DASHBOARD] Error message:", error instanceof Error ? error.message : String(error));
+    console.error("[DASHBOARD] Error stack:", error instanceof Error ? error.stack : "No stack");
     // If database error, redirect to onboarding (user might not exist yet)
     redirect("/onboarding");
   }
