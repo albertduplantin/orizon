@@ -5,6 +5,7 @@ import { frFR } from "@clerk/localizations";
 import { ThemeProvider } from "@/core/theme/ThemeProvider";
 import { RealtimeProvider } from "@/core/realtime/RealtimeProvider";
 import { Header } from "@/components/layout/header";
+import { Toaster } from "@/components/ui/sonner";
 import "@/styles/globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -52,6 +53,7 @@ export default function RootLayout({
             <RealtimeProvider>
               <Header />
               {children}
+              <Toaster position="top-right" richColors />
             </RealtimeProvider>
           </ThemeProvider>
         </body>

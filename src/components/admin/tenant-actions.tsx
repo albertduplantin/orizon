@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -14,7 +15,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Pencil, Trash2, Package, Users, AlertTriangle } from "lucide-react";
+import { Pencil, Trash2, Package, Users, AlertTriangle, Loader2 } from "lucide-react";
 
 interface TenantActionsProps {
   tenantId: string;
@@ -35,14 +36,21 @@ export function TenantActions({ tenantId, tenantName, tenantSlug }: TenantAction
       });
 
       if (response.ok) {
+        toast.success("Événement supprimé", {
+          description: `L'événement "${tenantName}" et toutes ses données ont été supprimés.`,
+        });
         router.push("/admin");
         router.refresh();
       } else {
         const data = await response.json();
-        alert(`Erreur: ${data.error}`);
+        toast.error("Erreur lors de la suppression", {
+          description: data.error || "Une erreur est survenue",
+        });
       }
     } catch (error) {
-      alert("Erreur lors de la suppression");
+      toast.error("Erreur lors de la suppression", {
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
+      });
     } finally {
       setIsDeleting(false);
       setShowConfirm(false);
@@ -119,6 +127,7 @@ export function TenantActions({ tenantId, tenantName, tenantSlug }: TenantAction
               disabled={isDeleting}
               className="bg-red-600 hover:bg-red-700"
             >
+              {isDeleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {isDeleting ? "Suppression en cours..." : "Supprimer définitivement"}
             </AlertDialogAction>
           </AlertDialogFooter>

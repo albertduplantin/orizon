@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { ClearanceBadge } from "./clearance-badge";
 import { ClearanceSelector } from "./clearance-selector";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Shield, X, UserPlus, Search, Filter, UserCircle, AlertTriangle, Trash2 } from "lucide-react";
+import { Shield, X, UserPlus, Search, Filter, UserCircle, AlertTriangle, Trash2, Loader2 } from "lucide-react";
 import type { ClearanceLevel } from "@/lib/clearance";
 import { ASSOCIATION_ROLES } from "@/lib/clearance-mapping";
 import Link from "next/link";
@@ -129,10 +130,18 @@ export function MembersManager({ tenantId, members }: MembersManagerProps) {
         m.id === memberId ? { ...m, clearanceLevel: newLevel } : m
       ));
 
+      toast.success("Clearance modifiée", {
+        description: `Niveau ${newLevel} ${getClearanceName(newLevel)} appliqué avec succès.`,
+      });
+
       setEditingMember(null);
       setPendingClearanceChange(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Une erreur est survenue");
+      const errorMsg = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(errorMsg);
+      toast.error("Erreur lors de la modification", {
+        description: errorMsg,
+      });
     } finally {
       setLoading(false);
     }
@@ -162,9 +171,18 @@ export function MembersManager({ tenantId, members }: MembersManagerProps) {
 
       // Remove member from local state
       setLocalMembers(localMembers.filter(m => m.id !== pendingDeletion.memberId));
+
+      toast.success("Membre retiré", {
+        description: `${pendingDeletion.memberName} a été retiré de l'événement.`,
+      });
+
       setPendingDeletion(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Une erreur est survenue");
+      const errorMsg = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(errorMsg);
+      toast.error("Erreur lors de la suppression", {
+        description: errorMsg,
+      });
     } finally {
       setIsDeleting(false);
     }
@@ -198,16 +216,20 @@ export function MembersManager({ tenantId, members }: MembersManagerProps) {
         throw new Error("Erreur lors de la création de l'invitation");
       }
 
-      setInviteSuccess(`Invitation envoyée à ${inviteEmail} !`);
-      setInviteEmail("");
+      const roleName = ASSOCIATION_ROLES[inviteRole as keyof typeof ASSOCIATION_ROLES]?.name || inviteRole;
 
-      // Close dialog after 2 seconds
-      setTimeout(() => {
-        setInviteDialogOpen(false);
-        setInviteSuccess("");
-      }, 2000);
+      toast.success("Invitation envoyée", {
+        description: `Une invitation (${roleName}) a été envoyée à ${inviteEmail}`,
+      });
+
+      setInviteEmail("");
+      setInviteDialogOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Une erreur est survenue");
+      const errorMsg = err instanceof Error ? err.message : "Une erreur est survenue";
+      setError(errorMsg);
+      toast.error("Erreur lors de l'invitation", {
+        description: errorMsg,
+      });
     } finally {
       setInviting(false);
     }
@@ -312,12 +334,6 @@ export function MembersManager({ tenantId, members }: MembersManagerProps) {
               </DialogHeader>
 
               <div className="space-y-4 py-4">
-                {inviteSuccess && (
-                  <div className="p-4 rounded-md bg-green-50 border border-green-200">
-                    <p className="text-sm text-green-600">{inviteSuccess}</p>
-                  </div>
-                )}
-
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Email</label>
                   <Input
@@ -345,6 +361,7 @@ export function MembersManager({ tenantId, members }: MembersManagerProps) {
                 </div>
 
                 <Button onClick={handleInvite} disabled={inviting || !inviteEmail} className="w-full">
+                  {inviting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   {inviting ? "Envoi en cours..." : "Envoyer l'invitation"}
                 </Button>
               </div>
@@ -544,6 +561,7 @@ export function MembersManager({ tenantId, members }: MembersManagerProps) {
               disabled={loading}
               className="bg-amber-600 hover:bg-amber-700"
             >
+              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {loading ? "Modification en cours..." : "Confirmer le changement"}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -597,6 +615,7 @@ export function MembersManager({ tenantId, members }: MembersManagerProps) {
               disabled={isDeleting}
               className="bg-red-600 hover:bg-red-700"
             >
+              {isDeleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {isDeleting ? "Suppression en cours..." : "Retirer ce membre"}
             </AlertDialogAction>
           </AlertDialogFooter>
