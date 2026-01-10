@@ -5,6 +5,7 @@ import { tenants, tenantMembers, users, volunteers, volunteerMissions, volunteer
 import { eq, and, desc, count } from "drizzle-orm";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { VolunteerCard } from "@/components/volunteers/volunteer-card";
 
 interface PageProps {
   params: Promise<{
@@ -109,6 +110,28 @@ export default async function VolunteersPage({ params }: PageProps) {
           </div>
         </div>
 
+        {/* Pending Volunteers Alert */}
+        {pendingVolunteers.length > 0 && (
+          <div className="glass-card p-6 rounded-xl mb-8 border-l-4 border-orange-500">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></span>
+                  {pendingVolunteers.length} bénévole{pendingVolunteers.length > 1 ? "s" : ""} en attente d'approbation
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Approuvez ou rejetez les candidatures pour permettre aux bénévoles de participer aux missions.
+                </p>
+                <div className="space-y-3">
+                  {pendingVolunteers.map((volunteer) => (
+                    <VolunteerCard key={volunteer.id} volunteer={volunteer} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-4 mb-8">
           <div className="glass-card p-6 rounded-xl">
@@ -145,37 +168,10 @@ export default async function VolunteersPage({ params }: PageProps) {
             ) : (
               <div className="space-y-3">
                 {tenantVolunteers.slice(0, 5).map((volunteer) => (
-                  <div
+                  <VolunteerCard
                     key={volunteer.id}
-                    className="p-4 border rounded-lg hover:bg-white/50 transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
-                          {volunteer.user.name?.[0]?.toUpperCase() || "?"}
-                        </div>
-                        <div>
-                          <p className="font-medium">{volunteer.user.name || "Sans nom"}</p>
-                          <p className="text-sm text-muted-foreground">{volunteer.user.email}</p>
-                        </div>
-                      </div>
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          volunteer.status === "approved"
-                            ? "bg-green-100 text-green-700"
-                            : volunteer.status === "pending"
-                            ? "bg-orange-100 text-orange-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
-                      >
-                        {volunteer.status === "approved"
-                          ? "Approuvé"
-                          : volunteer.status === "pending"
-                          ? "En attente"
-                          : "Rejeté"}
-                      </span>
-                    </div>
-                  </div>
+                    volunteer={volunteer}
+                  />
                 ))}
                 {tenantVolunteers.length > 5 && (
                   <div className="text-center pt-2">
