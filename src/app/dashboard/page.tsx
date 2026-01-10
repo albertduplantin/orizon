@@ -11,11 +11,33 @@ export default async function DashboardPage() {
     redirect("/sign-in");
   }
 
-  try {
-    console.log("[DASHBOARD] Checking user:", user.id, user.emailAddresses[0]?.emailAddress);
+  console.log("[DASHBOARD] Checking user:", user.id, user.emailAddresses[0]?.emailAddress);
 
-    // Check if user exists in database and has tenants
-    let dbUser = await db.query.users.findFirst({
+  // Check if user exists in database and has tenants
+  let dbUser = await db.query.users.findFirst({
+    where: eq(users.clerkId, user.id),
+    with: {
+      tenantMembers: {
+        with: {
+          tenant: true,
+        },
+      },
+    },
+  });
+
+  // If user doesn't exist in DB, create them (webhook might have failed)
+  if (!dbUser) {
+    console.log("[DASHBOARD] User not in DB, creating from Clerk data...");
+    await db.insert(users).values({
+      clerkId: user.id,
+      email: user.emailAddresses[0].emailAddress,
+      name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
+      image: user.imageUrl || null,
+      phone: user.phoneNumbers?.[0]?.phoneNumber || null,
+    });
+
+    // Fetch again with relations
+    dbUser = await db.query.users.findFirst({
       where: eq(users.clerkId, user.id),
       with: {
         tenantMembers: {
@@ -25,53 +47,22 @@ export default async function DashboardPage() {
         },
       },
     });
+    console.log("[DASHBOARD] User created in DB:", dbUser?.id);
+  }
 
-    // If user doesn't exist in DB, create them (webhook might have failed)
-    if (!dbUser) {
-      console.log("[DASHBOARD] User not in DB, creating from Clerk data...");
-      const newUsers = await db.insert(users).values({
-        clerkId: user.id,
-        email: user.emailAddresses[0].emailAddress,
-        name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
-        image: user.imageUrl || null,
-        phone: user.phoneNumbers?.[0]?.phoneNumber || null,
-      }).returning();
+  console.log("[DASHBOARD] DB User found:", !!dbUser);
+  console.log("[DASHBOARD] Tenants count:", dbUser?.tenantMembers.length || 0);
 
-      // Fetch again with relations
-      dbUser = await db.query.users.findFirst({
-        where: eq(users.clerkId, user.id),
-        with: {
-          tenantMembers: {
-            with: {
-              tenant: true,
-            },
-          },
-        },
-      });
-      console.log("[DASHBOARD] User created in DB:", dbUser?.id);
-    }
-
-    console.log("[DASHBOARD] DB User found:", !!dbUser);
-    console.log("[DASHBOARD] Tenants count:", dbUser?.tenantMembers.length || 0);
-
-    // If no tenants, redirect to onboarding
-    if (!dbUser || dbUser.tenantMembers.length === 0) {
-      console.log("[DASHBOARD] Redirecting to onboarding - no tenants");
-      redirect("/onboarding");
-    }
-
-    // Redirect to first tenant dashboard
-    const firstTenant = dbUser.tenantMembers[0].tenant;
-    const targetUrl = `/dashboard/${firstTenant.slug}`;
-    console.log("[DASHBOARD] About to redirect to:", targetUrl);
-    console.log("[DASHBOARD] User has", dbUser.tenantMembers.length, "tenant(s)");
-    redirect(targetUrl);
-  } catch (error) {
-    console.error("[DASHBOARD] Error occurred:", error);
-    console.error("[DASHBOARD] Error type:", error instanceof Error ? error.constructor.name : typeof error);
-    console.error("[DASHBOARD] Error message:", error instanceof Error ? error.message : String(error));
-    console.error("[DASHBOARD] Error stack:", error instanceof Error ? error.stack : "No stack");
-    // If database error, redirect to onboarding (user might not exist yet)
+  // If no tenants, redirect to onboarding
+  if (!dbUser || dbUser.tenantMembers.length === 0) {
+    console.log("[DASHBOARD] Redirecting to onboarding - no tenants");
     redirect("/onboarding");
   }
+
+  // Redirect to first tenant dashboard
+  const firstTenant = dbUser.tenantMembers[0].tenant;
+  const targetUrl = `/dashboard/${firstTenant.slug}`;
+  console.log("[DASHBOARD] About to redirect to:", targetUrl);
+  console.log("[DASHBOARD] User has", dbUser.tenantMembers.length, "tenant(s)");
+  redirect(targetUrl);
 }
