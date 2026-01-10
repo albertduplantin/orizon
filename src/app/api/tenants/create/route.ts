@@ -97,11 +97,12 @@ export async function POST(req: Request) {
 
     console.log("Tenant created:", tenant.id);
 
-    // Add user as tenant admin
+    // Add user as tenant admin with BLUE clearance (5)
     await db.insert(tenantMembers).values({
       tenantId: tenant.id,
       userId: dbUser.id,
       role: "tenant_admin",
+      clearanceLevel: 5, // BLUE - Tenant admin level
     });
 
     console.log("Tenant member added");
