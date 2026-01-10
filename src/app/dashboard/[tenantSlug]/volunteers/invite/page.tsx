@@ -5,6 +5,7 @@ import { tenants, tenantMembers, users, inviteCodes } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import Link from "next/link";
 import { InviteCodeGenerator } from "@/components/volunteers/invite-code-generator";
+import { ShareableInviteLink } from "@/components/volunteers/shareable-invite-link";
 
 interface PageProps {
   params: Promise<{
@@ -145,15 +146,13 @@ export default async function InviteVolunteersPage({ params }: PageProps) {
                       </div>
                       {!isExpired && !isMaxed && (
                         <div className="mt-3 pt-3 border-t">
-                          <p className="text-xs text-muted-foreground mb-2">
-                            Lien d&apos;invitation :
+                          <p className="text-xs font-medium mb-2">
+                            Partager ce lien :
                           </p>
-                          <code className="text-xs bg-gray-100 px-2 py-1 rounded block overflow-x-auto">
-                            {typeof window !== "undefined"
-                              ? window.location.origin
-                              : "https://orizon.app"}
-                            /join/{inviteCode.code}
-                          </code>
+                          <ShareableInviteLink
+                            code={inviteCode.code}
+                            email={inviteCode.email || undefined}
+                          />
                         </div>
                       )}
                     </div>
