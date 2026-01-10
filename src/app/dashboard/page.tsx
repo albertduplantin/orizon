@@ -15,7 +15,7 @@ export default async function DashboardPage() {
     console.log("[DASHBOARD] Checking user:", user.id, user.emailAddresses[0]?.emailAddress);
 
     // Check if user exists in database and has tenants
-    const dbUser = await db.query.users.findFirst({
+    let dbUser = await db.query.users.findFirst({
       where: eq(users.clerkId, user.id),
       with: {
         tenantMembers: {
@@ -26,12 +26,37 @@ export default async function DashboardPage() {
       },
     });
 
+    // If user doesn't exist in DB, create them (webhook might have failed)
+    if (!dbUser) {
+      console.log("[DASHBOARD] User not in DB, creating from Clerk data...");
+      const newUsers = await db.insert(users).values({
+        clerkId: user.id,
+        email: user.emailAddresses[0].emailAddress,
+        name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
+        image: user.imageUrl || null,
+        phone: user.phoneNumbers?.[0]?.phoneNumber || null,
+      }).returning();
+
+      // Fetch again with relations
+      dbUser = await db.query.users.findFirst({
+        where: eq(users.clerkId, user.id),
+        with: {
+          tenantMembers: {
+            with: {
+              tenant: true,
+            },
+          },
+        },
+      });
+      console.log("[DASHBOARD] User created in DB:", dbUser?.id);
+    }
+
     console.log("[DASHBOARD] DB User found:", !!dbUser);
     console.log("[DASHBOARD] Tenants count:", dbUser?.tenantMembers.length || 0);
 
-    // If no user or no tenants, redirect to onboarding
+    // If no tenants, redirect to onboarding
     if (!dbUser || dbUser.tenantMembers.length === 0) {
-      console.log("[DASHBOARD] Redirecting to onboarding - no user or no tenants");
+      console.log("[DASHBOARD] Redirecting to onboarding - no tenants");
       redirect("/onboarding");
     }
 
