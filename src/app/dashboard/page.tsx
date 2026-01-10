@@ -53,6 +53,12 @@ export default async function DashboardPage() {
   console.log("[DASHBOARD] DB User found:", !!dbUser);
   console.log("[DASHBOARD] Tenants count:", dbUser?.tenantMembers.length || 0);
 
+  // Check if profile is complete (email and phone required)
+  if (dbUser && (!dbUser.email || !dbUser.phone)) {
+    console.log("[DASHBOARD] Redirecting to complete-profile - missing data");
+    redirect("/complete-profile");
+  }
+
   // If no tenants, redirect to onboarding
   if (!dbUser || dbUser.tenantMembers.length === 0) {
     console.log("[DASHBOARD] Redirecting to onboarding - no tenants");
