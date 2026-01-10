@@ -12,6 +12,8 @@ export default async function DashboardPage() {
   }
 
   try {
+    console.log("[DASHBOARD] Checking user:", user.id, user.emailAddresses[0]?.emailAddress);
+
     // Check if user exists in database and has tenants
     const dbUser = await db.query.users.findFirst({
       where: eq(users.clerkId, user.id),
@@ -24,16 +26,21 @@ export default async function DashboardPage() {
       },
     });
 
+    console.log("[DASHBOARD] DB User found:", !!dbUser);
+    console.log("[DASHBOARD] Tenants count:", dbUser?.tenantMembers.length || 0);
+
     // If no user or no tenants, redirect to onboarding
     if (!dbUser || dbUser.tenantMembers.length === 0) {
+      console.log("[DASHBOARD] Redirecting to onboarding - no user or no tenants");
       redirect("/onboarding");
     }
 
     // Redirect to first tenant dashboard
     const firstTenant = dbUser.tenantMembers[0].tenant;
+    console.log("[DASHBOARD] Redirecting to tenant:", firstTenant.slug);
     redirect(`/dashboard/${firstTenant.slug}`);
   } catch (error) {
-    console.error("Dashboard error:", error);
+    console.error("[DASHBOARD] Error:", error);
     // If database error, redirect to onboarding (user might not exist yet)
     redirect("/onboarding");
   }
