@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isSuperAdmin } from "@/lib/admin/auth";
 import { db } from "@/db";
-import { tenantMembers, volunteerMissions, volunteers } from "@/db/schema";
+import { tenantMembers, volunteerAssignments, volunteers } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { isValidClearance } from "@/lib/clearance";
 
@@ -98,9 +98,11 @@ export async function DELETE(
     });
 
     if (volunteer) {
-      await db.delete(volunteerMissions).where(
-        eq(volunteerMissions.volunteerId, volunteer.id)
+      // Delete volunteer assignments first (cascade will handle this, but explicit for clarity)
+      await db.delete(volunteerAssignments).where(
+        eq(volunteerAssignments.volunteerId, volunteer.id)
       );
+      // Delete the volunteer record
       await db.delete(volunteers).where(eq(volunteers.id, volunteer.id));
     }
 
