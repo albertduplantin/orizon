@@ -36,12 +36,22 @@ export default async function TenantDashboardPage({ params }: PageProps) {
   }
 
   // Check if user is a member of this tenant
-  const dbUser = await db.query.users.findFirst({
+  let dbUser = await db.query.users.findFirst({
     where: eq(users.clerkId, user.id),
   });
 
+  // If user doesn't exist in DB, create them (webhook might have failed)
   if (!dbUser) {
-    redirect("/dashboard");
+    console.log("[TENANT DASHBOARD] User not in DB, creating from Clerk data...");
+    const newUsers = await db.insert(users).values({
+      clerkId: user.id,
+      email: user.emailAddresses[0].emailAddress,
+      name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
+      image: user.imageUrl || null,
+      phone: user.phoneNumbers?.[0]?.phoneNumber || null,
+    }).returning();
+    dbUser = newUsers[0];
+    console.log("[TENANT DASHBOARD] User created:", dbUser.id);
   }
 
   const member = await db.query.tenantMembers.findFirst({
